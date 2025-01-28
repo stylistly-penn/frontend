@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { post } from "@/app/util"; // adjust import path if needed
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
@@ -14,20 +15,15 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Replace with your actual authentication API endpoint
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Use our 'post' helper with 'jsonBody'
+      const response = await post("auth/login/", {
+        jsonBody: {
+          username,
+          password,
         },
-        body: JSON.stringify({ email, password }),
       });
-
-      if (!response.ok) {
-        throw new Error("Invalid credentials");
-      }
-
-      // If successful, redirect to the marketplace
+      console.log(response);
+      // On success, navigate away
       router.push("/marketplace");
     } catch (err: any) {
       setError(err.message || "An error occurred during login");
@@ -45,15 +41,15 @@ export default function LoginPage() {
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         <div className="mb-4">
-          <label htmlFor="email" className="block text-sm font-medium mb-1">
-            Email
+          <label htmlFor="username" className="block text-sm font-medium mb-1">
+            User Name
           </label>
           <input
-            type="email"
-            id="email"
+            type="text"
+            id="userName"
             className="w-full p-2 border rounded-lg"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>
