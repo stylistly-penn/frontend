@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Search, User } from "lucide-react";
+import AuthGuard from "@/components/authGuard";
 
 const MarketplacePage = () => {
   const [activeFilter, setActiveFilter] = React.useState("all-items");
@@ -69,123 +70,127 @@ const MarketplacePage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header */}
-      <div className="bg-white sticky top-0 z-10 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="py-4">
-            <h1 className="text-xl font-semibold mb-4">Marketplace</h1>
+    <AuthGuard>
+      <div className="min-h-screen bg-slate-50 pb-20">
+        {/* Header */}
+        <div className="bg-white sticky top-0 z-10 shadow-sm">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="py-4">
+              <h1 className="text-xl font-semibold mb-4">Marketplace</h1>
 
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                type="search"
-                placeholder="Search"
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <Input
+                  type="search"
+                  placeholder="Search"
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Filter Tabs */}
+              <Tabs
+                defaultValue="all-items"
+                className="mt-4"
+                onValueChange={setActiveFilter}
+              >
+                <TabsList className="w-full justify-start gap-2 h-auto p-0 bg-transparent">
+                  <TabsTrigger
+                    value="all-items"
+                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                  >
+                    All Items
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="sara-autumn"
+                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                  >
+                    Sara Autumn
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="winter"
+                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                  >
+                    Winter
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="basic"
+                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                  >
+                    Basic
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
-
-            {/* Filter Tabs */}
-            <Tabs
-              defaultValue="all-items"
-              className="mt-4"
-              onValueChange={setActiveFilter}
-            >
-              <TabsList className="w-full justify-start gap-2 h-auto p-0 bg-transparent">
-                <TabsTrigger
-                  value="all-items"
-                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                >
-                  All Items
-                </TabsTrigger>
-                <TabsTrigger
-                  value="sara-autumn"
-                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                >
-                  Sara Autumn
-                </TabsTrigger>
-                <TabsTrigger
-                  value="winter"
-                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                >
-                  Winter
-                </TabsTrigger>
-                <TabsTrigger
-                  value="basic"
-                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                >
-                  Basic
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </div>
-      </div>
 
-      {/* Product Grid */}
-      <main className="max-w-4xl mx-auto px-4 mt-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {filteredProducts.map((product) => (
-            <Card
-              key={product.id}
-              className="overflow-hidden border-0 shadow-sm"
-            >
-              <Link href={`/product/${product.id}`}>
-                <div className="aspect-[3/4] relative">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="object-cover w-full h-full"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-medium text-slate-900">{product.name}</h3>
-                  <p className="text-slate-600">${product.price}</p>
-                </div>
+        {/* Product Grid */}
+        <main className="max-w-4xl mx-auto px-4 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {filteredProducts.map((product) => (
+              <Card
+                key={product.id}
+                className="overflow-hidden border-0 shadow-sm"
+              >
+                <Link href={`/product/${product.id}`}>
+                  <div className="aspect-[3/4] relative">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-medium text-slate-900">
+                      {product.name}
+                    </h3>
+                    <p className="text-slate-600">${product.price}</p>
+                  </div>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        </main>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="flex justify-around py-3">
+              <Link href="/marketplace">
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center gap-1"
+                >
+                  <Home className="h-5 w-5" />
+                  <span className="text-xs">Home</span>
+                </Button>
               </Link>
-            </Card>
-          ))}
-        </div>
-      </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex justify-around py-3">
-            <Link href="/marketplace">
-              <Button
-                variant="ghost"
-                className="flex flex-col items-center gap-1"
-              >
-                <Home className="h-5 w-5" />
-                <span className="text-xs">Home</span>
-              </Button>
-            </Link>
-            <Link href="/saved">
-              <Button
-                variant="ghost"
-                className="flex flex-col items-center gap-1"
-              >
-                <Search className="h-5 w-5" />
-                <span className="text-xs">Saved</span>
-              </Button>
-            </Link>
-            <Link href="/profile">
-              <Button
-                variant="ghost"
-                className="flex flex-col items-center gap-1"
-              >
-                <User className="h-5 w-5" />
-                <span className="text-xs">Profile</span>
-              </Button>
-            </Link>
+              <Link href="/saved">
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center gap-1"
+                >
+                  <Search className="h-5 w-5" />
+                  <span className="text-xs">Saved</span>
+                </Button>
+              </Link>
+              <Link href="/profile">
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center gap-1"
+                >
+                  <User className="h-5 w-5" />
+                  <span className="text-xs">Profile</span>
+                </Button>
+              </Link>
+            </div>
           </div>
-        </div>
-      </nav>
-    </div>
+        </nav>
+      </div>
+    </AuthGuard>
   );
 };
 
