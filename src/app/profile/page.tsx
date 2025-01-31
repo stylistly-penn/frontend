@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Plus, User, ShoppingCart } from "lucide-react";
 import AuthGuard from "@/components/authGuard";
 
 const ProfilePage = () => {
@@ -26,6 +26,30 @@ const ProfilePage = () => {
 
   return (
     <AuthGuard>
+      <nav className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo/Brand */}
+            <Link href="/" className="font-semibold text-xl text-indigo-600">
+              Stylistly
+            </Link>
+
+            {/* Right Side Items */}
+            <div className="flex items-center space-x-4">
+              <Link href="/marketplace">
+                <Button variant="ghost" size="icon">
+                  <ShoppingCart className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/profile">
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
       <div className="min-h-screen bg-slate-50 pb-8">
         {/* Header */}
         <div className="bg-white p-6 shadow-sm">

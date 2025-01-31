@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import AuthGuard from "@/components/authGuard";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
@@ -28,7 +28,7 @@ const LoginPage = () => {
 
     try {
       const response = await post("auth/login/", {
-        jsonBody: { username: email, password },
+        jsonBody: { username: username, password },
       });
       console.log(response);
       router.push("/marketplace");
@@ -56,14 +56,14 @@ const LoginPage = () => {
             )}
             <form className="space-y-4" onSubmit={handleLogin}>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
+                  id="username"
                   type="text"
-                  placeholder="Enter your email"
+                  placeholder="Enter your username"
                   className="h-12"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>

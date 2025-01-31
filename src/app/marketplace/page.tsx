@@ -64,33 +64,13 @@ const Marketplace = () => {
               Stylistly
             </Link>
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8">
-              <Link
-                href="/marketplace"
-                className="text-slate-900 hover:text-indigo-600"
-              >
-                Marketplace
-              </Link>
-              <Link
-                href="/collections"
-                className="text-slate-600 hover:text-indigo-600"
-              >
-                Collections
-              </Link>
-              <Link
-                href="/favorites"
-                className="text-slate-600 hover:text-indigo-600"
-              >
-                Favorites
-              </Link>
-            </div>
-
             {/* Right Side Items */}
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon">
-                <ShoppingCart className="h-5 w-5" />
-              </Button>
+              <Link href="/marketplace">
+                <Button variant="ghost" size="icon">
+                  <ShoppingCart className="h-5 w-5" />
+                </Button>
+              </Link>
               <Link href="/profile">
                 <Button variant="ghost" size="icon">
                   <User className="h-5 w-5" />

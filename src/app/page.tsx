@@ -31,9 +31,11 @@ const HomePage = () => {
             Find your most flattering colors and shop a personalized wardrobe
             that brings out your natural beauty
           </p>
-          <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700">
-            Get Started
-          </Button>
+          <Link href="/login" passHref>
+            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700">
+              Get Started
+            </Button>
+          </Link>
         </div>
       </section>
 
@@ -102,9 +104,11 @@ const HomePage = () => {
             Join thousands of others who have discovered their perfect colors
             and revolutionized their shopping experience
           </p>
-          <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700">
-            Start Your Color Journey
-          </Button>
+          <Link href="/login" passHref>
+            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700">
+              Start Your Color Journey
+            </Button>
+          </Link>
         </div>
       </section>
     </div>
