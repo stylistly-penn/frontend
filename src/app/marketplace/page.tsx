@@ -5,147 +5,206 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Search, User } from "lucide-react";
-import AuthGuard from "@/components/authGuard";
+import { Home, Search, User, ShoppingCart } from "lucide-react";
+import { get } from "@/app/util";
+import { useState, useEffect } from "react";
 
-const MarketplacePage = () => {
-  const [activeFilter, setActiveFilter] = React.useState("all-items");
-  const [searchQuery, setSearchQuery] = React.useState("");
+const Marketplace = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all-items");
+  const [products, setProducts] = useState<any[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Sample product data - would come from your API
-  const products = [
-    {
-      id: 1,
-      name: "Beige Trousers",
-      price: 89.99,
-      category: "sara-autumn",
-      image: "/api/placeholder/300/400",
-    },
-    {
-      id: 2,
-      name: "Olive Jumpsuit",
-      price: 129.99,
-      category: "sara-autumn",
-      image: "/api/placeholder/300/400",
-    },
-    {
-      id: 3,
-      name: "Blue Turtleneck",
-      price: 59.99,
-      category: "winter",
-      image: "/api/placeholder/300/400",
-    },
-    {
-      id: 4,
-      name: "Navy Sweater",
-      price: 79.99,
-      category: "winter",
-      image: "/api/placeholder/300/400",
-    },
-    {
-      id: 5,
-      name: "Black Skirt",
-      price: 49.99,
-      category: "basic",
-      image: "/api/placeholder/300/400",
-    },
-    {
-      id: 6,
-      name: "White Tank Top",
-      price: 29.99,
-      category: "basic",
-      image: "/api/placeholder/300/400",
-    },
-  ];
+  // Fetch and filter products based on color, activeFilter, and searchQuery
+  const fetchAndFilterProducts = async () => {
+    setLoading(true);
+    try {
+      // Get the color filter from your criteria
+      const color = [161, 109, 58];
+      const colorQuery = color.join(","); // Join array into a string
+      const route = `items/`;
+      const fetchedProducts = await get(route);
+      setProducts(fetchedProducts); // Store fetched products
 
-  const filteredProducts = products.filter((product) => {
-    if (activeFilter !== "all-items" && product.category !== activeFilter)
-      return false;
-    if (
-      searchQuery &&
-      !product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-      return false;
-    return true;
-  });
+      // Apply filtering logic based on activeFilter and searchQuery
+      const filtered = fetchedProducts.filter((product: any) => {
+        if (activeFilter !== "all-items" && product.category !== activeFilter) {
+          return false;
+        }
+        if (
+          searchQuery &&
+          !product.description.toLowerCase().includes(searchQuery.toLowerCase())
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      setFilteredProducts(filtered); // Update filtered products
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch and filter products when activeFilter or searchQuery changes
+  useEffect(() => {
+    fetchAndFilterProducts();
+  }, [activeFilter, searchQuery]);
 
   return (
-    <AuthGuard>
-      <div className="min-h-screen bg-slate-50 pb-20">
-        {/* Header */}
-        <div className="bg-white sticky top-0 z-10 shadow-sm">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="py-4">
-              <h1 className="text-xl font-semibold mb-4">Marketplace</h1>
+    <div className="min-h-screen bg-slate-50 pb-20">
+      <nav className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo/Brand */}
+            <Link href="/" className="font-semibold text-xl text-indigo-600">
+              Stylistly
+            </Link>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input
-                  type="search"
-                  placeholder="Search"
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              {/* Filter Tabs */}
-              <Tabs
-                defaultValue="all-items"
-                className="mt-4"
-                onValueChange={setActiveFilter}
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center space-x-8">
+              <Link
+                href="/marketplace"
+                className="text-slate-900 hover:text-indigo-600"
               >
-                <TabsList className="w-full justify-start gap-2 h-auto p-0 bg-transparent">
-                  <TabsTrigger
-                    value="all-items"
-                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                  >
-                    All Items
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="sara-autumn"
-                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                  >
-                    Sara Autumn
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="winter"
-                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                  >
-                    Winter
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="basic"
-                    className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
-                  >
-                    Basic
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+                Marketplace
+              </Link>
+              <Link
+                href="/collections"
+                className="text-slate-600 hover:text-indigo-600"
+              >
+                Collections
+              </Link>
+              <Link
+                href="/favorites"
+                className="text-slate-600 hover:text-indigo-600"
+              >
+                Favorites
+              </Link>
+            </div>
+
+            {/* Right Side Items */}
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="icon">
+                <ShoppingCart className="h-5 w-5" />
+              </Button>
+              <Link href="/profile">
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
+      </nav>
 
-        {/* Product Grid */}
-        <main className="max-w-4xl mx-auto px-4 mt-6">
+      {/* Header */}
+      <div className="bg-white sticky top-0 z-10 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="py-4">
+            <h1 className="text-xl font-semibold mb-4">Marketplace</h1>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                type="search"
+                placeholder="Search"
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Filter Tabs */}
+            <Tabs
+              defaultValue="all-items"
+              className="mt-4"
+              onValueChange={setActiveFilter}
+            >
+              <TabsList className="w-full justify-start gap-2 h-auto p-0 bg-transparent">
+                <TabsTrigger
+                  value="all-items"
+                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                >
+                  All Items
+                </TabsTrigger>
+                <TabsTrigger
+                  value="sara-autumn"
+                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                >
+                  Sara Autumn
+                </TabsTrigger>
+                <TabsTrigger
+                  value="winter"
+                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                >
+                  Winter
+                </TabsTrigger>
+                <TabsTrigger
+                  value="basic"
+                  className="px-4 py-2 rounded-full data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+                >
+                  Basic
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <Card
+              key={product.id}
+              className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <Link href={`${product.product_url}`}>
+                <div className="aspect-[3/4] relative">
+                  <img
+                    src={product.colors[0].image_url}
+                    alt={product.description}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-medium text-slate-900">
+                    {product.description}
+                  </h3>
+                  <p className="text-slate-600">${product.price}</p>
+                </div>
+              </Link>
+            </Card>
+          ))}
+        </div>
+      </main>
+
+      {/* Product Grid
+      <main className="max-w-4xl mx-auto px-4 mt-6">
+        {loading ? (
+          <div>Loading...</div> // Or use a spinner here
+        ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {filteredProducts.map((product) => (
               <Card
                 key={product.id}
                 className="overflow-hidden border-0 shadow-sm"
               >
-                <Link href={`/product/${product.id}`}>
+                <Link href={`${product.product_url}`}>
                   <div className="aspect-[3/4] relative">
                     <img
-                      src={product.image}
-                      alt={product.name}
+                      src={product.colors[0].image_url}
+                      alt={product.description}
                       className="object-cover w-full h-full"
                     />
                   </div>
                   <div className="p-4">
                     <h3 className="font-medium text-slate-900">
-                      {product.name}
+                      {product.description}
                     </h3>
                     <p className="text-slate-600">${product.price}</p>
                   </div>
@@ -153,48 +212,14 @@ const MarketplacePage = () => {
               </Card>
             ))}
           </div>
-        </main>
-
-        {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="flex justify-around py-3">
-              <Link href="/marketplace">
-                <Button
-                  variant="ghost"
-                  className="flex flex-col items-center gap-1"
-                >
-                  <Home className="h-5 w-5" />
-                  <span className="text-xs">Home</span>
-                </Button>
-              </Link>
-              <Link href="/saved">
-                <Button
-                  variant="ghost"
-                  className="flex flex-col items-center gap-1"
-                >
-                  <Search className="h-5 w-5" />
-                  <span className="text-xs">Saved</span>
-                </Button>
-              </Link>
-              <Link href="/profile">
-                <Button
-                  variant="ghost"
-                  className="flex flex-col items-center gap-1"
-                >
-                  <User className="h-5 w-5" />
-                  <span className="text-xs">Profile</span>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </nav>
-      </div>
-    </AuthGuard>
+        )}
+      </main> */}
+    </div>
   );
 };
 
-export default MarketplacePage;
+export default Marketplace;
+
 // // pages/marketplace.tsx
 // "use client";
 
