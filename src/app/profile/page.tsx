@@ -1,163 +1,178 @@
-import React from "react";
-import Link from "next/link";
+"use client";
+import React, { useState, useEffect } from "react";
+import { Upload } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, User, ShoppingCart } from "lucide-react";
-import AuthGuard from "@/components/authGuard";
+import RootLayout from "@/components/rootlayout";
+import { useRef } from "react";
 
 const ProfilePage = () => {
-  // This would come from your user context/auth state
-  const userProfile = {
-    name: "You",
-    colorType: "Autumn",
-    colorDescription:
-      "That means you have warm undertones, and look best in rich, muted, and warm aesthetics.",
-    colorTip: "Avoid cool, bright, or contrasting colors.",
-    colorPalette: ["#FF6B6B", "#FFB347", "#FFD93D", "#95D5B2"],
-    savedStyles: [
-      { id: 1, name: "Fall", items: 12 },
-      { id: 2, name: "Prom", items: 8 },
-      { id: 3, name: "Work", items: 15 },
-      { id: 4, name: "Date night", items: 6 },
-      { id: 5, name: "Casual", items: 20 },
-      { id: 6, name: "Gym", items: 10 },
-    ],
+  const stylists = [
+    { name: "Fall", items: 12 },
+    { name: "Prom", items: 8 },
+    { name: "Work", items: 15 },
+    { name: "Date night", items: 6 },
+    { name: "Casual", items: 20 },
+    { name: "Gym", items: 10 },
+  ];
+
+  const [userColors, setUserColors] = useState<
+    { id: number; name: string; rgb: string }[]
+  >([]);
+
+  // Load and process color palette from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedColors = localStorage.getItem("colorPalette");
+      if (storedColors) {
+        try {
+          console.log(storedColors);
+          const parsedColors = JSON.parse(storedColors).map(
+            (color: [number, string, string]) => {
+              const rgbArray = color[2]
+                .replace(/\[|\]/g, "")
+                .split(" ")
+                .map(Number);
+              return {
+                id: color[0],
+                name: color[1],
+                rgb: `rgb(${rgbArray.join(",")})`, // Convert to CSS format
+              };
+            }
+          );
+          setUserColors(parsedColors);
+        } catch (error) {
+          console.error("Error parsing colorPalette:", error);
+        }
+      }
+    }
+  }, []);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const imageUrl = URL.createObjectURL(file);
+      setImagePreview(imageUrl);
+      console.log("Selected file:", file);
+    }
   };
 
   return (
-    <AuthGuard>
-      <nav className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo/Brand */}
-            <Link href="/" className="font-semibold text-xl text-indigo-600">
-              Stylistly
-            </Link>
-
-            {/* Right Side Items */}
-            <div className="flex items-center space-x-4">
-              <Link href="/marketplace">
-                <Button variant="ghost" size="icon">
-                  <ShoppingCart className="h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/profile">
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-      <div className="min-h-screen bg-slate-50 pb-8">
-        {/* Header */}
-        <div className="bg-white p-6 shadow-sm">
-          <div className="max-w-2xl mx-auto">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Welcome, {userProfile.name}
-            </h1>
-
-            {/* Color Palette Display */}
-            <div className="flex gap-2 mt-2">
-              {userProfile.colorPalette.map((color, index) => (
-                <div
-                  key={index}
-                  className="w-6 h-6 rounded"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <main className="max-w-2xl mx-auto px-4 mt-8 space-y-8">
-          {/* Saved Styles Grid */}
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              My Stylists
-            </h2>
-            <div className="grid grid-cols-3 gap-4">
-              {userProfile.savedStyles.map((style) => (
-                <Link
-                  href={`/styles/${style.id}`}
-                  key={style.id}
-                  className="block"
-                >
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 text-center">
-                      <p className="font-medium text-slate-900">{style.name}</p>
-                      <p className="text-sm text-slate-500">
-                        {style.items} items
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-
-              <Link href="/styles/create" className="block">
-                <Card className="hover:shadow-md transition-shadow border-dashed">
-                  <CardContent className="p-4 flex items-center justify-center h-full">
-                    <Plus className="w-6 h-6 text-slate-400" />
-                  </CardContent>
-                </Card>
-              </Link>
-            </div>
-          </section>
-
-          {/* Color Analysis Results */}
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              My Style
-            </h2>
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <div className="flex gap-2">
-                  {userProfile.colorPalette.map((color, index) => (
-                    <div
-                      key={index}
-                      className="w-8 h-8 rounded"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-
-                <div>
-                  <p className="font-medium text-slate-900">
-                    You're an {userProfile.colorType}
-                  </p>
-                  <p className="text-slate-600 mt-1">
-                    {userProfile.colorDescription}
-                  </p>
-                  <p className="text-slate-600 mt-2">{userProfile.colorTip}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Action Buttons */}
+    <RootLayout>
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">
+          Welcome, {localStorage.getItem("username")}
+        </h1>
+        <div className="flex flex-col">
+          <h2 className="text-xl text-gray-600 mb-3">Your Color Palette:</h2>
           <div className="flex gap-4">
-            <Link href="/marketplace" passHref>
-              <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
-                // onClick={() => (window.location.href = "/marketplace")}
-              >
-                Marketplace
-              </Button>
-            </Link>
-            <Link href="/profile" passHref>
-              <Button
-                className="flex-1"
-                variant="outline"
-                // onClick={() => (window.location.href = "/profile/edit")}
-              >
-                Profile
-              </Button>
-            </Link>
+            {userColors.length > 0 ? (
+              userColors.map((color) => (
+                <div key={color.id} className="flex flex-col items-center">
+                  <div
+                    className="w-10 h-10 rounded-full border border-gray-300 shadow-md"
+                    style={{ backgroundColor: color.rgb }}
+                    title={color.name}
+                  ></div>
+                  <span className="text-sm text-gray-700 mt-1">
+                    {color.name}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">No colors found</p>
+            )}
           </div>
-        </main>
+        </div>
       </div>
-    </AuthGuard>
+
+      {/* Photo Upload Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Update Your Color Analysis</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="border-2 border-dashed rounded-lg p-8 text-center">
+            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+
+            {/* Upload Button */}
+            <Button onClick={handleUploadClick}>Upload New Photo</Button>
+
+            <p className="text-sm text-gray-500 mt-2">
+              Upload a well-lit photo of yourself to redo your color analysis.
+            </p>
+
+            {/* Display Uploaded Image Preview */}
+            {imagePreview && (
+              <div className="mt-6 flex justify-center">
+                <img
+                  src={imagePreview}
+                  alt="Uploaded Preview"
+                  className="w-72 h-72 md:w-96 md:h-96 rounded-lg object-cover border border-gray-300 shadow-lg"
+                />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Color Analysis Info */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>What is Color Analysis?</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-600 mb-4">
+            Color analysis is a method to determine which colors best complement
+            your natural features. It takes into account your skin undertone,
+            eye color, and natural hair color to create a personalized color
+            palette that enhances your natural beauty.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* My Stylists Section */}
+      <h2 className="text-2xl font-bold mb-4">My Stylists</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {stylists.map((stylist) => (
+          <Card
+            key={stylist.name}
+            className="hover:shadow-lg transition-shadow"
+          >
+            <CardHeader>
+              <CardTitle>{stylist.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">{stylist.items} items</p>
+            </CardContent>
+          </Card>
+        ))}
+        <Card className="flex items-center justify-center h-full cursor-pointer hover:shadow-lg transition-shadow">
+          <Button variant="ghost" size="lg">
+            + Add New Category
+          </Button>
+        </Card>
+      </div>
+    </RootLayout>
   );
 };
 

@@ -19,6 +19,7 @@ import AuthGuard from "@/components/authGuard";
 const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [userDetails, setUserDetails] = useState({});
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -30,8 +31,16 @@ const LoginPage = () => {
       const response = await post("auth/login/", {
         jsonBody: { username: username, password },
       });
-      console.log(response);
-      router.push("/marketplace");
+      if (!response) {
+        throw new Error("Invalid response from server");
+      }
+      setUserDetails(response);
+      localStorage.setItem("username", username);
+      localStorage.setItem(
+        "colorPalette",
+        JSON.stringify(response?.colors || [])
+      );
+      router.push("/profile");
     } catch (err: any) {
       setError(err.message || "An error occurred during login");
     }
