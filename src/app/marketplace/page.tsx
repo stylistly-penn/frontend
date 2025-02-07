@@ -23,6 +23,7 @@ interface Product {
   id: number;
   description: string;
   brand: string;
+  brand_name: string;
   price: number;
   image: string;
   product_url: string;
@@ -76,6 +77,25 @@ const Marketplace = () => {
     }
   };
 
+  const fetchAllProducts = async (colorArray: string) => {
+    try {
+      const route_color = `items/`;
+      const fetchedProducts = await get(route_color);
+      if (Array.isArray(fetchedProducts)) {
+        return fetchedProducts;
+      }
+      console.error("Fetched products is not an array:", fetchedProducts);
+      return [];
+    } catch (error) {
+      console.error("Error fetching products by color:", error);
+      return [];
+    }
+  };
+
+  const shuffleArray = (array: Product[]) => {
+    return array.sort(() => Math.random() - 0.5);
+  };
+
   // Main fetch function
   const fetchAndFilterProducts = async () => {
     setLoading(true);
@@ -87,7 +107,7 @@ const Marketplace = () => {
       // If a specific color is selected, fetch only for that color
       if (selectedColor) {
         const colorProducts = await fetchProductsByColor(selectedColor);
-        console.log(colorProducts);
+        console.log("Selected color");
         for (const colorProduct of colorProducts) {
           if (!allProductsSet.has(colorProduct.id)) {
             allProductsSet.add(colorProduct.id);
@@ -96,28 +116,41 @@ const Marketplace = () => {
         }
       } else {
         // Fetch products for all colors in palette
-        for (const color of userPalette) {
-          const colorProducts = await fetchProductsByColor(color.color_array);
-          for (const colorProduct of colorProducts) {
+        if (userPalette.length === 0) {
+          console.log("No colors in palette");
+          const allProducts = await fetchAllProducts("");
+          for (const colorProduct of allProducts) {
             if (!allProductsSet.has(colorProduct.id)) {
               allProductsSet.add(colorProduct.id);
               uniqueProducts.push(colorProduct);
+            }
+          }
+        } else {
+          for (const color of userPalette) {
+            console.log("Color from user's palette:");
+            const colorProducts = await fetchProductsByColor(color.color_array);
+            for (const colorProduct of colorProducts) {
+              if (!allProductsSet.has(colorProduct.id)) {
+                allProductsSet.add(colorProduct.id);
+                uniqueProducts.push(colorProduct);
+              }
             }
           }
         }
       }
 
       // Apply brand and search filters
-      const filtered = uniqueProducts.filter((product) => {
+      const shuffledProducts = shuffleArray(uniqueProducts);
+      const filtered = shuffledProducts.filter((product) => {
         const matchesBrand =
           activeFilter === "all-items" ||
-          product.brand.toString() === activeFilter.toString();
+          product.brand_name.toString() === activeFilter.toString();
         const matchesSearch =
           !searchQuery ||
           product.description.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesBrand && matchesSearch;
       });
-
+      console.log(filtered);
       setProducts(uniqueProducts);
       setFilteredProducts(filtered);
     } catch (error) {
@@ -132,10 +165,15 @@ const Marketplace = () => {
     getColorPalette();
   }, []);
 
-  // Fetch products when filters change
+  // Fetch products once the color palette is loaded
   useEffect(() => {
-    fetchAndFilterProducts();
-  }, [selectedColor, activeFilter, searchQuery]);
+    if (
+      userPalette.length > 0 ||
+      localStorage.getItem("colorPalette") !== null
+    ) {
+      fetchAndFilterProducts();
+    }
+  }, [userPalette, selectedColor, activeFilter, searchQuery]);
 
   return (
     <RootLayout>
@@ -185,11 +223,6 @@ const Marketplace = () => {
                   className="w-4 h-4 rounded-full mr-2"
                   style={{ backgroundColor: color.rgb }}
                 />
-                {/* <div
-                  className="w-10 h-10 rounded-full border border-gray-300 shadow-md"
-                  style={{ backgroundColor: color.rgb }}
-                  title={color.name}
-                ></div> */}
                 {color.name}
               </Button>
             ))}
@@ -208,7 +241,7 @@ const Marketplace = () => {
           >
             All Items
           </Button>
-          {["JCrew", "Uniqlo", "Basic"].map((brand) => (
+          {["J. Crew", "Uniqlo", "Basic"].map((brand) => (
             <Button
               key={brand}
               variant="ghost"

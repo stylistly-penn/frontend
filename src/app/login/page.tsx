@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { post } from "@/app/util"; // Adjust import path if needed
+import { post } from "@/app/util";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
