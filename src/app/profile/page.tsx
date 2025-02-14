@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import RootLayout from "@/components/rootlayout";
 import { useRef } from "react";
+import { get, post } from "@/app/util";
 
 const ProfilePage = () => {
   const stylists = [
@@ -16,34 +17,69 @@ const ProfilePage = () => {
     { name: "Gym", items: 10 },
   ];
 
-  const [userColors, setUserColors] = useState<
+  const [userColorPalette, setUserColorPalette] = useState<
     { id: number; name: string; rgb: string }[]
   >([]);
+  const [userColorIds, setUserColorIds] = useState<number[]>([]);
+  const [userSeason, setUserSeason] = useState<string | null>(null);
 
   // Load and process color palette from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedColors = localStorage.getItem("colorPalette");
-      if (storedColors) {
-        try {
-          console.log(storedColors);
-          const parsedColors = JSON.parse(storedColors).map(
-            (color: [number, string, string]) => {
-              const rgbArray = color[2]
-                .replace(/\[|\]/g, "")
-                .split(" ")
-                .map(Number);
-              return {
-                id: color[0],
-                name: color[1],
-                rgb: `rgb(${rgbArray.join(",")})`, // Convert to CSS format
-              };
-            }
-          );
-          setUserColors(parsedColors);
-        } catch (error) {
-          console.error("Error parsing colorPalette:", error);
+      if (localStorage.getItem("season") === null) {
+        // alert("Please upload photo first");
+      } else {
+        setUserSeason(localStorage.getItem("season"));
+        // const storedColors = localStorage.getItem("colorPalette");
+        // if (storedColors) {
+        //   try {
+        //     console.log(storedColors);
+        //     const parsedColors = JSON.parse(storedColors).map(
+        //       (color: [number, string, string]) => {
+        //         const rgbArray = color.code
+        //           .replace(/\[|\]/g, "")
+        //           .split(" ")
+        //           .map(Number);
+        //         return {
+        //           id: color[0],
+        //           name: color[1],
+        //           rgb: `rgb(${rgbArray.join(",")})`, // Convert to CSS format
+        //         };
+        //       }
+        //     );
+        //     console.log("Parsed colors:", parsedColors);
+        //     setUserColors(parsedColors);
+        //   } catch (error) {
+        //     console.error("Error parsing colorPalette:", error);
+        //   }
+        // }
+        const storedColors = localStorage.getItem("colorPalette");
+        const storedColorIds = localStorage.getItem("colorIds");
+        console.log(storedColors);
+        console.log(storedColorIds);
+
+        if (storedColors && storedColorIds) {
+          const colorIds = JSON.parse(storedColorIds); // Parse stored color IDs
+          const parsedColors = JSON.parse(storedColors).map((color, index) => {
+            const rgbArray = color
+              .replace(/\[|\]/g, "") // Remove brackets
+              .split(" ") // Split into individual values
+              .map(Number);
+
+            return {
+              id: colorIds[index], // Take ID from colorIds array
+              name: color.name || `Color ${index + 1}`,
+              color_array: `[${rgbArray.join(",")}]`,
+              rgb: `rgb(${rgbArray.join(",")})`,
+            };
+          });
+          console.log("Parsed colors:", parsedColors);
+          console.log("Color IDs:", colorIds);
+          setUserColorPalette(parsedColors);
+          setUserColorIds(colorIds);
         }
+        console.log("User color palette:", userColorPalette);
+        console.log("User color IDs:", userColorIds);
       }
     }
   }, []);
@@ -57,12 +93,35 @@ const ProfilePage = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const imageUrl = URL.createObjectURL(file);
       setImagePreview(imageUrl);
       console.log("Selected file:", file);
+      // Here you can also handle the file upload to your server if needed
+      // if (localStorage.getItem("season") === null) {
+      const list_seasons = [1, 2, 3, 4];
+      const randomSeason =
+        list_seasons[Math.floor(Math.random() * list_seasons.length)];
+      const response = await get(`seasons/${randomSeason}/`);
+      console.log(response);
+      localStorage.setItem("season", response.name);
+      const colorCodes = response.colors.map((color) => color.code);
+      const colorIds = response.colors.map((color) => color.color_id);
+      localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
+      localStorage.setItem("colorIds", JSON.stringify(colorIds));
+      console.log("Color codes:", colorCodes);
+      console.log("Color IDs:", colorIds);
+      const update_user_season = await post(`seasons/user_update/`, {
+        jsonBody: { name: response.name },
+      });
+      if (!update_user_season) {
+        throw new Error("Invalid response from server");
+      } else {
+        console.log("Updated user season:", update_user_season);
+      }
+      // }
     }
   };
 
@@ -74,10 +133,14 @@ const ProfilePage = () => {
           Welcome, {localStorage.getItem("username")}
         </h1>
         <div className="flex flex-col">
+          <h2 className="text-xl text-gray-600 mb-3">Your Season:</h2>
+          <p className="text-lg font-semibold text-indigo-600">
+            {userSeason || "Not found"}
+          </p>
           <h2 className="text-xl text-gray-600 mb-3">Your Color Palette:</h2>
           <div className="flex gap-4">
-            {userColors.length > 0 ? (
-              userColors.map((color) => (
+            {userColorPalette.length > 0 ? (
+              userColorPalette.map((color) => (
                 <div key={color.id} className="flex flex-col items-center">
                   <div
                     className="w-10 h-10 rounded-full border border-gray-300 shadow-md"

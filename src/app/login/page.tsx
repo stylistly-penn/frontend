@@ -36,10 +36,18 @@ const LoginPage = () => {
       }
       setUserDetails(response);
       localStorage.setItem("username", username);
-      localStorage.setItem(
-        "colorPalette",
-        JSON.stringify(response?.colors || [])
-      );
+      if (response.user.season !== null) {
+        const user_season = response.user.season.name;
+        const colorCodes = response.user.season.colors.map(
+          (color) => color.code
+        );
+        const colorIds = response.user.season.colors.map(
+          (color) => color.color_id
+        );
+        localStorage.setItem("season", user_season);
+        localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
+        localStorage.setItem("colorIds", JSON.stringify(colorIds));
+      }
       router.push("/profile");
     } catch (err: any) {
       setError(err.message || "An error occurred during login");

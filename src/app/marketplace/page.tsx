@@ -22,8 +22,7 @@ interface ColorPalette {
 interface Product {
   id: number;
   description: string;
-  brand: string;
-  brand_name: string;
+  brand: { id: number; name: string };
   price: number;
   image: string;
   product_url: string;
@@ -36,35 +35,64 @@ const Marketplace = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all-items");
-  const [userPalette, setUserPalette] = useState<ColorPalette[]>([]);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [userColorPalette, setUserColorPalette] = useState<ColorPalette[]>([]);
+  const [userColorIds, setUserColorIds] = useState<string[]>([]);
+  const [selectedColor, setSelectedColor] = useState<number | null>(null);
 
   // Function to get color palette from localStorage
   const getColorPalette = () => {
+    // const storedColors = localStorage.getItem("colorPalette");
+    // if (storedColors) {
+    //   const parsedColors = JSON.parse(storedColors).map(
+    //     (color: [number, string, string]) => {
+    //       const rgbArray = color.code
+    //         .replace(/\[|\]/g, "") // Remove brackets
+    //         .split(" ") // Split into individual values
+    //         .map(Number);
+    //       return {
+    //         id: color[0],
+    //         name: color[1],
+    //         color_array: `[${rgbArray.join(",")}]`,
+    //         rgb: `rgb(${rgbArray.join(",")})`,
+    //       };
+    //     }
+    //   );
+    //   setUserColorPalette(parsedColors);
+    // }
+    // const storedColorIds = localStorage.getItem("colorIds");
+    // if (storedColorIds) {
+    //   setUserColorIds(storedColorIds);
+    // }
+    console.log(localStorage);
     const storedColors = localStorage.getItem("colorPalette");
-    if (storedColors) {
-      const parsedColors = JSON.parse(storedColors).map(
-        (color: [number, string, string]) => {
-          const rgbArray = color[2]
-            .replace(/\[|\]/g, "")
-            .split(" ")
-            .map(Number);
-          return {
-            id: color[0],
-            name: color[1],
-            color_array: `[${rgbArray.join(",")}]`,
-            rgb: `rgb(${rgbArray.join(",")})`,
-          };
-        }
-      );
-      setUserPalette(parsedColors);
+    const storedColorIds = localStorage.getItem("colorIds");
+
+    if (storedColors && storedColorIds) {
+      const colorIds = JSON.parse(storedColorIds); // Parse stored color IDs
+      const parsedColors = JSON.parse(storedColors).map((color, index) => {
+        const rgbArray = color
+          .replace(/\[|\]/g, "") // Remove brackets
+          .split(" ") // Split into individual values
+          .map(Number);
+
+        return {
+          id: colorIds[index], // Take ID from colorIds array
+          name: color.name || `Color ${index + 1}`,
+          color_array: `[${rgbArray.join(",")}]`,
+          rgb: `rgb(${rgbArray.join(",")})`,
+        };
+      });
+      console.log("Parsed colors:", parsedColors);
+      console.log("Color IDs:", colorIds);
+      setUserColorPalette(parsedColors);
+      setUserColorIds(colorIds);
     }
   };
 
   // Fetch products based on color
   const fetchProductsByColor = async (colorArray: string) => {
     try {
-      const route_color = `items/filter_by_color/?color=${colorArray}`;
+      const route_color = `items/filter_by_color/${colorArray}/`;
       const fetchedProducts = await get(route_color);
       if (Array.isArray(fetchedProducts)) {
         return fetchedProducts;
@@ -98,6 +126,7 @@ const Marketplace = () => {
 
   // Main fetch function
   const fetchAndFilterProducts = async () => {
+    console.log("Fetching products...");
     setLoading(true);
     try {
       // const allProducts: Product[] = [];
@@ -108,6 +137,7 @@ const Marketplace = () => {
       if (selectedColor) {
         const colorProducts = await fetchProductsByColor(selectedColor);
         console.log("Selected color");
+        console.log(selectedColor);
         for (const colorProduct of colorProducts) {
           if (!allProductsSet.has(colorProduct.id)) {
             allProductsSet.add(colorProduct.id);
@@ -116,7 +146,8 @@ const Marketplace = () => {
         }
       } else {
         // Fetch products for all colors in palette
-        if (userPalette.length === 0) {
+        console.log(userColorIds);
+        if (userColorIds.length === 0) {
           console.log("No colors in palette");
           const allProducts = await fetchAllProducts("");
           for (const colorProduct of allProducts) {
@@ -126,9 +157,9 @@ const Marketplace = () => {
             }
           }
         } else {
-          for (const color of userPalette) {
+          for (const color of userColorIds) {
             console.log("Color from user's palette:");
-            const colorProducts = await fetchProductsByColor(color.color_array);
+            const colorProducts = await fetchProductsByColor(color);
             for (const colorProduct of colorProducts) {
               if (!allProductsSet.has(colorProduct.id)) {
                 allProductsSet.add(colorProduct.id);
@@ -139,12 +170,14 @@ const Marketplace = () => {
         }
       }
 
+      console.log(uniqueProducts);
+      console.log(activeFilter.toString());
       // Apply brand and search filters
       const shuffledProducts = shuffleArray(uniqueProducts);
       const filtered = shuffledProducts.filter((product) => {
         const matchesBrand =
           activeFilter === "all-items" ||
-          product.brand_name.toString() === activeFilter.toString();
+          product.brand.name.toString() === activeFilter.toString();
         const matchesSearch =
           !searchQuery ||
           product.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -167,13 +200,14 @@ const Marketplace = () => {
 
   // Fetch products once the color palette is loaded
   useEffect(() => {
-    if (
-      userPalette.length > 0 ||
-      localStorage.getItem("colorPalette") !== null
-    ) {
-      fetchAndFilterProducts();
-    }
-  }, [userPalette, selectedColor, activeFilter, searchQuery]);
+    // if (
+    //   userPalette.length > 0 ||
+    //   localStorage.getItem("colorPalette") !== null
+    // ) {
+    //   fetchAndFilterProducts();
+    // }
+    fetchAndFilterProducts();
+  }, [userColorPalette, selectedColor, activeFilter, searchQuery]);
 
   return (
     <RootLayout>
@@ -209,15 +243,15 @@ const Marketplace = () => {
             >
               All Colors
             </Button>
-            {userPalette.map((color) => (
+            {userColorPalette.map((color) => (
               <Button
                 key={color.id}
                 variant="outline"
                 className={cn(
                   "border-2",
-                  selectedColor === color.color_array && "border-indigo-600"
+                  selectedColor === color.id && "border-indigo-600"
                 )}
-                onClick={() => setSelectedColor(color.color_array)}
+                onClick={() => setSelectedColor(color.id)}
               >
                 <div
                   className="w-4 h-4 rounded-full mr-2"
@@ -266,28 +300,30 @@ const Marketplace = () => {
         {/* Product Grid */}
         {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <Card
-                key={product.id}
-                className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <Link href={`${product.product_url}`}>
-                  <div className="aspect-[3/4] relative">
-                    <img
-                      src={product.colors[0].image_url}
-                      alt={product.description}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-slate-900">
-                      {product.description}
-                    </h3>
-                    <p className="text-slate-600">${product.price}</p>
-                  </div>
-                </Link>
-              </Card>
-            ))}
+            {filteredProducts.map((product) =>
+              product.colors.map((color, index) => (
+                <Card
+                  key={`${product.id}-${index}`}
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <Link href={`${product.product_url}`}>
+                    <div className="aspect-[3/4] relative">
+                      <img
+                        src={color.image_url}
+                        alt={product.description}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium text-slate-900">
+                        {product.description}
+                      </h3>
+                      <p className="text-slate-600">${product.price}</p>
+                    </div>
+                  </Link>
+                </Card>
+              ))
+            )}
           </div>
         )}
 
