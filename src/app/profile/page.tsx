@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import RootLayout from "@/components/rootlayout";
 import { useRef } from "react";
-import { get, post } from "@/app/util";
+import { get, patch, post_ml } from "@/app/util";
 
 const ProfilePage = () => {
   const stylists = [
@@ -96,16 +96,34 @@ const ProfilePage = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
       const imageUrl = URL.createObjectURL(file);
       setImagePreview(imageUrl);
-      console.log("Selected file:", file);
-      // Here you can also handle the file upload to your server if needed
-      // if (localStorage.getItem("season") === null) {
-      const list_seasons = [1, 2, 3, 4];
-      const randomSeason =
-        list_seasons[Math.floor(Math.random() * list_seasons.length)];
-      const response = await get(`seasons/${randomSeason}/`);
+
+      console.log("Uploading file to ML API...");
+      const mlResponse: { Season: keyof typeof seasonMap } = await post_ml(
+        "/uploadfile/",
+        {
+          body: formData,
+        }
+      );
+      console.log(mlResponse);
+      const seasonMap = {
+        spring: 2,
+        summer: 3,
+        autumn: 1,
+        winter: 4,
+      };
+      const seasonId: number = seasonMap[mlResponse.Season];
+      console.log("Returned season id: ", seasonId);
+      // const list_seasons = [1, 2, 3, 4];
+      // const randomSeason =
+      //   list_seasons[Math.floor(Math.random() * list_seasons.length)];
+
+      const response = await get(`seasons/${seasonId}/`);
       console.log(response);
+
       localStorage.setItem("season", response.name);
       const colorCodes = response.colors.map((color) => color.code);
       const colorIds = response.colors.map((color) => color.color_id);
@@ -113,15 +131,14 @@ const ProfilePage = () => {
       localStorage.setItem("colorIds", JSON.stringify(colorIds));
       console.log("Color codes:", colorCodes);
       console.log("Color IDs:", colorIds);
-      const update_user_season = await post(`seasons/user_update/`, {
-        jsonBody: { name: response.name },
+      const update_user_season = await patch(`seasons/user_update/`, {
+        jsonBody: { season: response.name },
       });
       if (!update_user_season) {
         throw new Error("Invalid response from server");
       } else {
         console.log("Updated user season:", update_user_season);
       }
-      // }
     }
   };
 

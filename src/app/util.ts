@@ -4,6 +4,7 @@ const BASE_URL =
   process.env.BACKEND_URL ||
   "http://localhost:8000";
 
+const ML_URL = "http://localhost:8080";
 /**
  * We'll extend RequestInit with our own `jsonBody` property:
  * - `jsonBody?: unknown`: for passing an object that we want auto-JSON-stringified
@@ -83,4 +84,50 @@ export async function put<T>(route: string, options?: FetchOptions) {
  */
 export async function del<T>(route: string, options?: FetchOptions) {
   return request<T>(route, { method: "DELETE", ...options });
+}
+
+/**
+ * PATCH request
+ */
+export async function patch<T>(route: string, options?: FetchOptions) {
+  return request<T>(route, { method: "PATCH", ...options });
+}
+
+async function requestML<T>(
+  route: string,
+  { method, headers, jsonBody, body, ...rest }: FetchOptions = {}
+): Promise<T> {
+  const url = `${ML_URL.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`;
+
+  let finalBody: BodyInit | undefined = undefined;
+  let finalHeaders: HeadersInit = { ...headers };
+
+  if (jsonBody !== undefined) {
+    finalBody = JSON.stringify(jsonBody);
+    finalHeaders = {
+      "Content-Type": "application/json",
+      ...finalHeaders,
+    };
+  } else if (body !== undefined && body !== null) {
+    finalBody = body;
+    // Do NOT set Content-Type for FormData, browser handles it
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers: finalHeaders,
+    credentials: "include",
+    body: finalBody,
+    ...rest,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function post_ml<T>(route: string, options?: FetchOptions) {
+  return requestML<T>(route, { method: "POST", ...options });
 }
