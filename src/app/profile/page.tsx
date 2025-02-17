@@ -23,6 +23,7 @@ const ProfilePage = () => {
   >([]);
   const [userColorIds, setUserColorIds] = useState<number[]>([]);
   const [userSeason, setUserSeason] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load and process color palette from localStorage
   useEffect(() => {
@@ -71,54 +72,9 @@ const ProfilePage = () => {
     }
   };
 
-  // const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files.length > 0) {
-  //     const file = e.target.files[0];
-  //     const formData = new FormData();
-  //     formData.append("file", file);
-  //     const imageUrl = URL.createObjectURL(file);
-  //     setImagePreview(imageUrl);
-
-  //     console.log("Uploading file to ML API...");
-  //     const mlResponse: { Season: keyof typeof seasonMap } = await post_ml(
-  //       "/uploadfile/",
-  //       {
-  //         body: formData,
-  //       }
-  //     );
-  //     console.log(mlResponse);
-  //     localStorage.setItem("task_id", mlResponse.task_id);
-  //     const seasonMap = {
-  //       spring: 2,
-  //       summer: 3,
-  //       autumn: 1,
-  //       winter: 4,
-  //     };
-  //     const seasonId: number = seasonMap[mlResponse.Season];
-  //     console.log("Returned season id: ", seasonId);
-
-  //     const response = await get(`seasons/${seasonId}/`);
-  //     console.log(response);
-
-  //     localStorage.setItem("season", response.name);
-  //     const colorCodes = response.colors.map((color) => color.code);
-  //     const colorIds = response.colors.map((color) => color.color_id);
-  //     localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
-  //     localStorage.setItem("colorIds", JSON.stringify(colorIds));
-  //     console.log("Color codes:", colorCodes);
-  //     console.log("Color IDs:", colorIds);
-  //     const update_user_season = await patch(`seasons/user_update/`, {
-  //       jsonBody: { season: response.name },
-  //     });
-  //     if (!update_user_season) {
-  //       throw new Error("Invalid response from server");
-  //     } else {
-  //       console.log("Updated user season:", update_user_season);
-  //     }
-  //   }
-  // };
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      setIsLoading(true); // Start loading
       const file = e.target.files[0];
       const formData = new FormData();
       formData.append("file", file);
@@ -137,6 +93,7 @@ const ProfilePage = () => {
         }
       } catch (error) {
         console.error("Error processing file upload:", error);
+        setIsLoading(false); // Stop loading on error
       }
     }
   };
@@ -145,58 +102,115 @@ const ProfilePage = () => {
     // Check for pending tasks when component mounts
     startTaskPolling();
 
-    // Listen for season updates
-    const handleSeasonUpdate = (event) => {
-      setUserSeason(event.detail.season);
-      // Re-fetch color palette
-      const storedColors = localStorage.getItem("colorPalette");
-      const storedColorIds = localStorage.getItem("colorIds");
-      if (storedColors && storedColorIds) {
-        // Your existing color parsing logic...
-      }
-    };
-
-    window.addEventListener("seasonUpdated", handleSeasonUpdate);
+    // Add event listener for season updates
+    window.addEventListener(
+      "seasonUpdated",
+      handleSeasonUpdate as EventListener
+    );
 
     return () => {
-      window.removeEventListener("seasonUpdated", handleSeasonUpdate);
-      // Note: We don't stop polling on component unmount
+      window.removeEventListener(
+        "seasonUpdated",
+        handleSeasonUpdate as EventListener
+      );
     };
-  }, []);
+  }, []); // Remove handleSeasonUpdate from dependencies
 
-  return (
-    <RootLayout>
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
-          Welcome, {localStorage.getItem("username")}
-        </h1>
-        <div className="flex flex-col">
-          <h2 className="text-xl text-gray-600 mb-3">Your Season:</h2>
+  const handleSeasonUpdate = async (event: CustomEvent) => {
+    const { season } = event.detail;
+    if (!season) return;
+
+    try {
+      setIsLoading(true);
+      console.log("Updating season to:", season);
+
+      // Send PATCH request with season name
+      const response = await patch(`seasons/user_update/`, {
+        jsonBody: { season },
+      });
+      console.log("Season update response:", response);
+
+      // Update UI with response data
+      if (response.season) {
+        setUserSeason(response.season.name);
+
+        // Process colors from the response
+        const parsedColors = response.season.colors.map(
+          (colorData: { code: string; color_id: number }) => {
+            const rgbArray = colorData.code
+              .replace(/\[|\]/g, "")
+              .split(" ")
+              .map(Number);
+
+            return {
+              id: colorData.color_id,
+              name: `Color ${colorData.color_id}`,
+              rgb: `rgb(${rgbArray.join(",")})`,
+            };
+          }
+        );
+
+        setUserColorPalette(parsedColors);
+        setUserColorIds(parsedColors.map((color) => color.id));
+      }
+    } catch (error) {
+      console.error("Error updating season:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update the season information section to show loading state
+  const renderSeasonInfo = () => (
+    <div className="mb-8">
+      <h1 className="text-3xl font-bold mb-2">
+        Welcome, {localStorage.getItem("username")}
+      </h1>
+      <div className="flex flex-col">
+        <h2 className="text-xl text-gray-600 mb-3">Your Season:</h2>
+        {isLoading ? (
+          <div className="animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-24"></div>
+          </div>
+        ) : (
           <p className="text-lg font-semibold text-indigo-600">
             {userSeason || "Not found"}
           </p>
-          <h2 className="text-xl text-gray-600 mb-3">Your Color Palette:</h2>
-          <div className="flex gap-4">
-            {userColorPalette.length > 0 ? (
-              userColorPalette.map((color) => (
-                <div key={color.id} className="flex flex-col items-center">
-                  <div
-                    className="w-10 h-10 rounded-full border border-gray-300 shadow-md"
-                    style={{ backgroundColor: color.rgb }}
-                    title={color.name}
-                  ></div>
-                  <span className="text-sm text-gray-700 mt-1">
-                    {color.name}
-                  </span>
+        )}
+
+        <h2 className="text-xl text-gray-600 mb-3">Your Color Palette:</h2>
+        <div className="flex gap-4">
+          {isLoading ? (
+            <div className="flex gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16 mt-1"></div>
                 </div>
-              ))
-            ) : (
-              <p className="text-gray-500">No colors found</p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : userColorPalette.length > 0 ? (
+            userColorPalette.map((color) => (
+              <div key={color.id} className="flex flex-col items-center">
+                <div
+                  className="w-10 h-10 rounded-full border border-gray-300 shadow-md"
+                  style={{ backgroundColor: color.rgb }}
+                  title={color.name}
+                ></div>
+                <span className="text-sm text-gray-700 mt-1">{color.name}</span>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">No colors found</p>
+          )}
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <RootLayout>
+      {renderSeasonInfo()}
 
       {/* Photo Upload Section */}
       <Card className="mb-8">

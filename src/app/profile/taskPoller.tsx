@@ -17,27 +17,12 @@ export const startTaskPolling = async () => {
 
       if (resultResponse && resultResponse.state === "SUCCESS") {
         console.log("Task completed successfully:", resultResponse);
-        const seasonMap = {
-          spring: 2,
-          summer: 3,
-          autumn: 1,
-          winter: 4,
-        };
 
-        const seasonId: number = seasonMap[resultResponse.result.Season];
-        const response = await get(`seasons/${seasonId}/`);
-
-        localStorage.setItem("season", response.name);
-        const colorCodes = response.colors.map((color) => color.code);
-        const colorIds = response.colors.map((color) => color.color_id);
-        localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
-        localStorage.setItem("colorIds", JSON.stringify(colorIds));
-
-        await patch(`seasons/user_update/`, {
-          jsonBody: { season: response.name },
-        });
-
-        console.log("Patched update");
+        // Extract and capitalize season name
+        const season =
+          resultResponse.result.Season.charAt(0).toUpperCase() +
+          resultResponse.result.Season.slice(1).toLowerCase();
+        console.log("Detected season:", season);
 
         // Clear task_id and stop polling
         localStorage.removeItem("task_id");
@@ -46,10 +31,10 @@ export const startTaskPolling = async () => {
           window._pollingInterval = null;
         }
 
-        // Dispatch a custom event that components can listen for
+        // Dispatch event with just the season name
         window.dispatchEvent(
           new CustomEvent("seasonUpdated", {
-            detail: { season: response.name },
+            detail: { season },
           })
         );
       } else if (resultResponse && resultResponse.state === "FAILED") {
