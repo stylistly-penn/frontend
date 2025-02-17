@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import RootLayout from "@/components/rootlayout";
 import { useRef } from "react";
 import { get, patch, post_ml } from "@/app/util";
+import { startTaskPolling } from "./taskPoller";
 
 const ProfilePage = () => {
   const stylists = [
@@ -30,29 +31,6 @@ const ProfilePage = () => {
         // alert("Please upload photo first");
       } else {
         setUserSeason(localStorage.getItem("season"));
-        // const storedColors = localStorage.getItem("colorPalette");
-        // if (storedColors) {
-        //   try {
-        //     console.log(storedColors);
-        //     const parsedColors = JSON.parse(storedColors).map(
-        //       (color: [number, string, string]) => {
-        //         const rgbArray = color.code
-        //           .replace(/\[|\]/g, "")
-        //           .split(" ")
-        //           .map(Number);
-        //         return {
-        //           id: color[0],
-        //           name: color[1],
-        //           rgb: `rgb(${rgbArray.join(",")})`, // Convert to CSS format
-        //         };
-        //       }
-        //     );
-        //     console.log("Parsed colors:", parsedColors);
-        //     setUserColors(parsedColors);
-        //   } catch (error) {
-        //     console.error("Error parsing colorPalette:", error);
-        //   }
-        // }
         const storedColors = localStorage.getItem("colorPalette");
         const storedColorIds = localStorage.getItem("colorIds");
         console.log(storedColors);
@@ -93,6 +71,52 @@ const ProfilePage = () => {
     }
   };
 
+  // const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files.length > 0) {
+  //     const file = e.target.files[0];
+  //     const formData = new FormData();
+  //     formData.append("file", file);
+  //     const imageUrl = URL.createObjectURL(file);
+  //     setImagePreview(imageUrl);
+
+  //     console.log("Uploading file to ML API...");
+  //     const mlResponse: { Season: keyof typeof seasonMap } = await post_ml(
+  //       "/uploadfile/",
+  //       {
+  //         body: formData,
+  //       }
+  //     );
+  //     console.log(mlResponse);
+  //     localStorage.setItem("task_id", mlResponse.task_id);
+  //     const seasonMap = {
+  //       spring: 2,
+  //       summer: 3,
+  //       autumn: 1,
+  //       winter: 4,
+  //     };
+  //     const seasonId: number = seasonMap[mlResponse.Season];
+  //     console.log("Returned season id: ", seasonId);
+
+  //     const response = await get(`seasons/${seasonId}/`);
+  //     console.log(response);
+
+  //     localStorage.setItem("season", response.name);
+  //     const colorCodes = response.colors.map((color) => color.code);
+  //     const colorIds = response.colors.map((color) => color.color_id);
+  //     localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
+  //     localStorage.setItem("colorIds", JSON.stringify(colorIds));
+  //     console.log("Color codes:", colorCodes);
+  //     console.log("Color IDs:", colorIds);
+  //     const update_user_season = await patch(`seasons/user_update/`, {
+  //       jsonBody: { season: response.name },
+  //     });
+  //     if (!update_user_season) {
+  //       throw new Error("Invalid response from server");
+  //     } else {
+  //       console.log("Updated user season:", update_user_season);
+  //     }
+  //   }
+  // };
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -101,46 +125,44 @@ const ProfilePage = () => {
       const imageUrl = URL.createObjectURL(file);
       setImagePreview(imageUrl);
 
-      console.log("Uploading file to ML API...");
-      const mlResponse: { Season: keyof typeof seasonMap } = await post_ml(
-        "/uploadfile/",
-        {
+      try {
+        console.log("Uploading file to ML API...");
+        const mlResponse = await post_ml("/uploadfile/", {
           body: formData,
+        });
+
+        if (mlResponse && mlResponse.task_id) {
+          localStorage.setItem("task_id", mlResponse.task_id);
+          startTaskPolling();
         }
-      );
-      console.log(mlResponse);
-      const seasonMap = {
-        spring: 2,
-        summer: 3,
-        autumn: 1,
-        winter: 4,
-      };
-      const seasonId: number = seasonMap[mlResponse.Season];
-      console.log("Returned season id: ", seasonId);
-      // const list_seasons = [1, 2, 3, 4];
-      // const randomSeason =
-      //   list_seasons[Math.floor(Math.random() * list_seasons.length)];
-
-      const response = await get(`seasons/${seasonId}/`);
-      console.log(response);
-
-      localStorage.setItem("season", response.name);
-      const colorCodes = response.colors.map((color) => color.code);
-      const colorIds = response.colors.map((color) => color.color_id);
-      localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
-      localStorage.setItem("colorIds", JSON.stringify(colorIds));
-      console.log("Color codes:", colorCodes);
-      console.log("Color IDs:", colorIds);
-      const update_user_season = await patch(`seasons/user_update/`, {
-        jsonBody: { season: response.name },
-      });
-      if (!update_user_season) {
-        throw new Error("Invalid response from server");
-      } else {
-        console.log("Updated user season:", update_user_season);
+      } catch (error) {
+        console.error("Error processing file upload:", error);
       }
     }
   };
+
+  useEffect(() => {
+    // Check for pending tasks when component mounts
+    startTaskPolling();
+
+    // Listen for season updates
+    const handleSeasonUpdate = (event) => {
+      setUserSeason(event.detail.season);
+      // Re-fetch color palette
+      const storedColors = localStorage.getItem("colorPalette");
+      const storedColorIds = localStorage.getItem("colorIds");
+      if (storedColors && storedColorIds) {
+        // Your existing color parsing logic...
+      }
+    };
+
+    window.addEventListener("seasonUpdated", handleSeasonUpdate);
+
+    return () => {
+      window.removeEventListener("seasonUpdated", handleSeasonUpdate);
+      // Note: We don't stop polling on component unmount
+    };
+  }, []);
 
   return (
     <RootLayout>

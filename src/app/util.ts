@@ -128,6 +128,50 @@ async function requestML<T>(
   return response.json() as Promise<T>;
 }
 
+async function requestML2<T>(
+  route: string,
+  { method, headers, jsonBody, body, ...rest }: FetchOptions = {}
+): Promise<T> {
+  const url = `${ML_URL.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`;
+
+  // If jsonBody is provided, we stringify it and set JSON headers
+  let finalBody: BodyInit | undefined = undefined;
+  let finalHeaders: HeadersInit = { ...headers };
+
+  if (jsonBody !== undefined) {
+    // auto-stringify
+    finalBody = JSON.stringify(jsonBody);
+    // make sure we have JSON headers
+    finalHeaders = {
+      "Content-Type": "application/json",
+      ...finalHeaders,
+    };
+  } else if (body !== undefined && body !== null) {
+    // if the user gave us raw body, just pass it along
+    finalBody = body;
+    // if it's a string or other type, the user is responsible for appropriate headers
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers: finalHeaders,
+    credentials: "include", // critical for cookie-based auth
+    body: finalBody,
+    ...rest,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  // Attempt to parse JSON response (adjust if your server sometimes returns non-JSON)
+  return response.json() as Promise<T>;
+}
+
 export async function post_ml<T>(route: string, options?: FetchOptions) {
   return requestML<T>(route, { method: "POST", ...options });
+}
+
+export async function get_ml<T>(route: string, options?: FetchOptions) {
+  return requestML2<T>(route, { method: "GET", ...options });
 }
