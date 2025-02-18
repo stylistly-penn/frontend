@@ -12,6 +12,10 @@ import {
   ShoppingCart,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Maximize2,
 } from "lucide-react";
 import { get } from "@/app/util";
 import { useState, useEffect } from "react";
@@ -19,6 +23,19 @@ import RootLayout from "@/components/rootlayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ColorPalette {
   id: number;
@@ -52,6 +69,40 @@ interface PaginatedResponse {
   results: Product[];
 }
 
+interface Season {
+  id: number;
+  name: string;
+  colors: Array<{
+    code: string;
+    color_id: number;
+  }>;
+}
+
+interface User {
+  username: string;
+  email: string;
+  season: Season;
+}
+
+interface AuthResponse {
+  authenticated: boolean;
+  user: User;
+}
+
+// Add new interface for Brand
+interface Brand {
+  id: number;
+  name: string;
+  styles: null;
+}
+
+interface BrandResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Brand[];
+}
+
 const Marketplace = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -67,6 +118,14 @@ const Marketplace = () => {
     new Set()
   );
   const [stackOrder, setStackOrder] = useState<{ [key: number]: number[] }>({});
+  const [openModal, setOpenModal] = useState<number | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [userSeasonId, setUserSeasonId] = useState<number | null>(null);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [activeBrandId, setActiveBrandId] = useState<number | null>(null);
+  const [orderBy, setOrderBy] = useState<
+    "default" | "euclidean_distance" | "price"
+  >("default");
 
   // Function to get color palette from localStorage
   const getColorPalette = () => {
@@ -126,36 +185,78 @@ const Marketplace = () => {
     return pages;
   };
 
+  // Function to get user's season ID
+  const getUserSeason = async () => {
+    try {
+      const response = await get("auth/check");
+      const data: AuthResponse = response;
+      if (data.authenticated && data.user.season) {
+        setUserSeasonId(data.user.season.id);
+      }
+    } catch (error) {
+      console.error("Error fetching user season:", error);
+    }
+  };
+
+  // Function to fetch brands
+  const fetchBrands = async () => {
+    try {
+      const response: BrandResponse = await get("brands");
+      setBrands(response.results);
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+    }
+  };
+
   const fetchAndFilterProducts = async () => {
     setLoading(true);
     try {
       let response: PaginatedResponse;
-      let route: string;
 
-      // When no color is selected or "All Colors" is clicked, use the base items endpoint
-      if (!selectedColor) {
-        route = `items/?page=${currentPage}`;
+      // Always use filter_items when using non-default ordering or when brand is selected
+      if (orderBy !== "default" || activeBrandId) {
+        const queryParams = new URLSearchParams();
+
+        // Add brand_id if selected
+        if (activeBrandId) {
+          queryParams.append("brand_id", activeBrandId.toString());
+        }
+
+        // Add color_id or season_id
+        if (selectedColor) {
+          queryParams.append("color_id", selectedColor.toString());
+        } else if (userSeasonId) {
+          queryParams.append("season_id", userSeasonId.toString());
+        }
+
+        // Add order_by if not default
+        if (orderBy !== "default") {
+          queryParams.append("order_by", orderBy);
+        }
+
+        response = await get(`items/filter_items/?${queryParams.toString()}`);
+      } else if (selectedColor) {
+        // Use color filter route when only color is selected
+        response = await get(
+          `items/filter_by_color/${selectedColor}/?page=${currentPage}`
+        );
+      } else if (userSeasonId) {
+        // Use season filter route when no filters are selected
+        response = await get(
+          `items/filter_by_season/${userSeasonId}/?page=${currentPage}`
+        );
       } else {
-        route = `items/filter_by_color/${selectedColor}/?page=${currentPage}`;
+        console.error("No valid filter criteria");
+        return;
       }
 
-      response = await get(route);
-      console.log(
-        `Page ${currentPage} results length:`,
-        response.results.length
-      );
-
       const filtered = response.results.filter((product) => {
-        const matchesBrand =
-          activeFilter === "all-items" ||
-          product.brand.name.toString() === activeFilter.toString();
-        const matchesSearch =
+        return (
           !searchQuery ||
-          product.description.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesBrand && matchesSearch;
+          product.description.toLowerCase().includes(searchQuery.toLowerCase())
+        );
       });
 
-      // Calculate total pages based on total count from response
       setTotalPages(Math.ceil(response.count / 20));
       setProducts(response.results);
       setFilteredProducts(filtered);
@@ -169,17 +270,48 @@ const Marketplace = () => {
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedColor, activeFilter, searchQuery]);
+  }, [selectedColor, activeBrandId, searchQuery]);
+
+  // Reset pagination when order changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedColor, activeBrandId, searchQuery, orderBy]);
 
   // Load color palette on mount
   useEffect(() => {
     getColorPalette();
   }, []);
 
+  // Get user's season ID on mount
+  useEffect(() => {
+    getUserSeason();
+  }, []);
+
+  // Load brands on mount
+  useEffect(() => {
+    fetchBrands();
+  }, []);
+
   // Fetch products when needed
   useEffect(() => {
-    fetchAndFilterProducts();
-  }, [userColorPalette, selectedColor, activeFilter, searchQuery, currentPage]);
+    if (
+      userSeasonId ||
+      selectedColor ||
+      activeBrandId ||
+      orderBy !== "default" ||
+      searchQuery ||
+      currentPage > 1
+    ) {
+      fetchAndFilterProducts();
+    }
+  }, [
+    userSeasonId,
+    selectedColor,
+    activeBrandId,
+    searchQuery,
+    currentPage,
+    orderBy,
+  ]);
 
   const toggleProductExpansion = (productId: number) => {
     setExpandedProducts((prev) => {
@@ -197,6 +329,32 @@ const Marketplace = () => {
   const parseRGB = (rgbStr: string) => {
     const values = rgbStr.match(/\d+/g)?.map(Number) || [0, 0, 0];
     return `rgb(${values.join(",")})`;
+  };
+
+  const handleExpand = (productId: number) => {
+    setOpenModal(productId);
+    setCurrentSlide(0);
+  };
+
+  const handleClose = () => {
+    setOpenModal(null);
+    setCurrentSlide(0);
+  };
+
+  const nextSlide = () => {
+    if (!openModal) return;
+    const product = filteredProducts.find((p) => p.id === openModal);
+    if (!product) return;
+    setCurrentSlide((prev) => (prev + 1) % product.colors.length);
+  };
+
+  const prevSlide = () => {
+    if (!openModal) return;
+    const product = filteredProducts.find((p) => p.id === openModal);
+    if (!product) return;
+    setCurrentSlide(
+      (prev) => (prev - 1 + product.colors.length) % product.colors.length
+    );
   };
 
   return (
@@ -222,7 +380,7 @@ const Marketplace = () => {
         {/* Color Palette Filters */}
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Your Color Palette</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               className={cn(
@@ -253,31 +411,49 @@ const Marketplace = () => {
           </div>
         </div>
 
-        {/* Brand Filters */}
-        <div className="flex gap-4">
-          <Button
-            variant="ghost"
-            className={cn(
-              "rounded-full",
-              activeFilter === "all-items" && "bg-gray-100"
-            )}
-            onClick={() => setActiveFilter("all-items")}
-          >
-            All Items
-          </Button>
-          {["J. Crew", "Uniqlo", "Basic"].map((brand) => (
+        {/* Brand Filters and Order By */}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-4">
             <Button
-              key={brand}
-              variant="ghost"
+              variant="outline"
               className={cn(
-                "rounded-full",
-                activeFilter === brand && "bg-gray-100"
+                "rounded-full border-2",
+                activeBrandId === null && "bg-gray-100 border-primary"
               )}
-              onClick={() => setActiveFilter(brand)}
+              onClick={() => setActiveBrandId(null)}
             >
-              {brand}
+              All Items
             </Button>
-          ))}
+            {brands.map((brand) => (
+              <Button
+                key={brand.id}
+                variant="outline"
+                className={cn(
+                  "rounded-full border-2",
+                  activeBrandId === brand.id && "bg-gray-100 border-primary"
+                )}
+                onClick={() => setActiveBrandId(brand.id)}
+              >
+                {brand.name}
+              </Button>
+            ))}
+          </div>
+
+          <Select
+            value={orderBy}
+            onValueChange={(
+              value: "default" | "euclidean_distance" | "price"
+            ) => setOrderBy(value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Order by..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Default</SelectItem>
+              <SelectItem value="euclidean_distance">Color Match</SelectItem>
+              <SelectItem value="price">Price (Low to High)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Loading State */}
@@ -289,163 +465,99 @@ const Marketplace = () => {
 
         {/* Product Grid */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-max">
-            {filteredProducts.map((product, productIndex) => {
-              const isExpanded = expandedProducts.has(product.id);
-              const extraColsNeeded = isExpanded
-                ? product.colors.length - 1
-                : 0;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredProducts.map((product, index) => {
+              // Determine which color variant to show first
+              let primaryColor = product.colors[0];
+              if (
+                orderBy === "euclidean_distance" &&
+                product.colors.length > 0
+              ) {
+                // Sort by euclidean_distance and take the best match
+                primaryColor = [...product.colors].sort(
+                  (a, b) => a.euclidean_distance - b.euclidean_distance
+                )[0];
+              }
+              // Note: For price and default, we keep the original order
 
               return (
-                <div
-                  key={product.id}
-                  className={cn(
-                    // Always take full row when expanded, regardless of number of colors
-                    isExpanded ? "col-span-4" : "col-span-1",
-                    "flex flex-row gap-6"
-                  )}
+                <Card
+                  key={`${product.id}-${
+                    primaryColor?.color_id || "default"
+                  }-${index}`}
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  {/* Main Product Card */}
-                  <Card className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow w-full">
-                    <Link href={`${product.product_url}`}>
-                      <div className="aspect-[3/4] relative">
-                        {product.colors[0]?.image_url && (
-                          <img
-                            src={product.colors[0].image_url}
-                            alt={product.description}
-                            className="object-cover w-full h-full"
-                          />
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-medium text-slate-900">
-                          {product.description}
-                        </h3>
-                        <p className="text-slate-600">${product.price}</p>
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center">
-                              <span className="text-xs text-gray-500 mr-2">
-                                Real Color
-                              </span>
-                              <div
-                                className="w-4 h-4 rounded-full border border-gray-200"
-                                style={{
-                                  backgroundColor: parseRGB(
-                                    product.colors[0].real_rgb
-                                  ),
-                                }}
-                              />
-                            </div>
-                            <div className="flex items-center">
-                              <span className="text-xs text-gray-500 mr-2">
-                                Season Color
-                              </span>
-                              <div
-                                className="w-4 h-4 rounded-full border border-gray-200"
-                                style={{
-                                  backgroundColor: parseRGB(
-                                    product.colors[0].code
-                                  ),
-                                }}
-                              />
-                            </div>
-                            <Badge variant="secondary" className="text-xs">
-                              Distance:{" "}
-                              {product.colors[0].euclidean_distance.toFixed(2)}
-                            </Badge>
-                          </div>
+                  <Link href={`${product.product_url}`}>
+                    <div className="aspect-[3/4] relative">
+                      {primaryColor?.image_url && (
+                        <img
+                          src={primaryColor.image_url}
+                          alt={product.description}
+                          className="object-cover w-full h-full"
+                        />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium text-slate-900">
+                        {product.description}
+                      </h3>
+                      <p className="text-slate-600">${product.price}</p>
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2">
+                          {primaryColor && (
+                            <>
+                              <div className="flex items-center">
+                                <span className="text-xs text-gray-500 mr-2">
+                                  Real Color
+                                </span>
+                                <div
+                                  className="w-4 h-4 rounded-full border border-gray-200"
+                                  style={{
+                                    backgroundColor: primaryColor.real_rgb
+                                      ? parseRGB(primaryColor.real_rgb)
+                                      : "transparent",
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center">
+                                <span className="text-xs text-gray-500 mr-2">
+                                  Season Color
+                                </span>
+                                <div
+                                  className="w-4 h-4 rounded-full border border-gray-200"
+                                  style={{
+                                    backgroundColor: primaryColor.code
+                                      ? parseRGB(primaryColor.code)
+                                      : "transparent",
+                                  }}
+                                />
+                              </div>
+                              <Badge variant="secondary" className="text-xs">
+                                Distance:{" "}
+                                {primaryColor.euclidean_distance.toFixed(2)}
+                              </Badge>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </Link>
+                    </div>
+                  </Link>
 
-                    {/* Expand Button */}
-                    {product.colors.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        className="w-full mt-2"
-                        onClick={() => toggleProductExpansion(product.id)}
-                      >
-                        {isExpanded ? (
-                          <>
-                            <ChevronUp className="h-4 w-4 mr-2" />
-                            Show Less
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-4 w-4 mr-2" />
-                            Show {product.colors.length - 1} More Colors
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </Card>
-
-                  {/* Expanded Color Variants */}
-                  {isExpanded && (
-                    <>
-                      {product.colors.slice(1).map((color, index) => (
-                        <Card
-                          key={`${product.id}-${index + 1}`}
-                          className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow w-full"
-                        >
-                          <Link href={`${product.product_url}`}>
-                            <div className="aspect-[3/4] relative">
-                              {color.image_url && (
-                                <img
-                                  src={color.image_url}
-                                  alt={product.description}
-                                  className="object-cover w-full h-full"
-                                />
-                              )}
-                            </div>
-                            <div className="p-4">
-                              <h3 className="font-medium text-slate-900">
-                                {product.description}
-                              </h3>
-                              <p className="text-slate-600">${product.price}</p>
-                              <div className="mt-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center">
-                                    <span className="text-xs text-gray-500 mr-2">
-                                      Real Color
-                                    </span>
-                                    <div
-                                      className="w-4 h-4 rounded-full border border-gray-200"
-                                      style={{
-                                        backgroundColor: parseRGB(
-                                          color.real_rgb
-                                        ),
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="flex items-center">
-                                    <span className="text-xs text-gray-500 mr-2">
-                                      Season Color
-                                    </span>
-                                    <div
-                                      className="w-4 h-4 rounded-full border border-gray-200"
-                                      style={{
-                                        backgroundColor: parseRGB(color.code),
-                                      }}
-                                    />
-                                  </div>
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    Distance:{" "}
-                                    {color.euclidean_distance.toFixed(2)}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          </Link>
-                        </Card>
-                      ))}
-                    </>
+                  {/* Expand Button */}
+                  {product.colors?.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      className="w-full mt-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleExpand(product.id);
+                      }}
+                    >
+                      <Maximize2 className="h-4 w-4 mr-2" />
+                      Show {product.colors.length - 1} More Colors
+                    </Button>
                   )}
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -489,6 +601,126 @@ const Marketplace = () => {
             </Button>
           </div>
         )}
+
+        {/* Color Variants Modal */}
+        <Dialog open={openModal !== null} onOpenChange={() => handleClose()}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Color Variants</DialogTitle>
+            </DialogHeader>
+
+            {openModal && (
+              <div className="relative">
+                <div className="flex items-center justify-center">
+                  {/* Current Slide */}
+                  {filteredProducts
+                    .find((p) => p.id === openModal)
+                    ?.colors.map((color, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "transition-all duration-300",
+                          currentSlide === index ? "block" : "hidden"
+                        )}
+                      >
+                        <Card className="overflow-hidden border-0 shadow-sm w-full max-w-md mx-auto">
+                          <div className="aspect-[3/4] relative">
+                            {color.image_url && (
+                              <img
+                                src={color.image_url}
+                                alt={
+                                  filteredProducts.find(
+                                    (p) => p.id === openModal
+                                  )?.description
+                                }
+                                className="object-cover w-full h-full"
+                              />
+                            )}
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-medium text-slate-900">
+                              {
+                                filteredProducts.find((p) => p.id === openModal)
+                                  ?.description
+                              }
+                            </h3>
+                            <p className="text-slate-600">
+                              $
+                              {
+                                filteredProducts.find((p) => p.id === openModal)
+                                  ?.price
+                              }
+                            </p>
+                            <div className="mt-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center">
+                                  <span className="text-xs text-gray-500 mr-2">
+                                    Real Color
+                                  </span>
+                                  <div
+                                    className="w-4 h-4 rounded-full border border-gray-200"
+                                    style={{
+                                      backgroundColor: parseRGB(color.real_rgb),
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-xs text-gray-500 mr-2">
+                                    Season Color
+                                  </span>
+                                  <div
+                                    className="w-4 h-4 rounded-full border border-gray-200"
+                                    style={{
+                                      backgroundColor: parseRGB(color.code),
+                                    }}
+                                  />
+                                </div>
+                                <Badge variant="secondary" className="text-xs">
+                                  Distance:{" "}
+                                  {color.euclidean_distance.toFixed(2)}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Navigation and Indicators together at bottom */}
+                <div className="flex items-center justify-center gap-4 mt-4">
+                  <Button variant="ghost" size="icon" onClick={prevSlide}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  {/* Slide Indicators */}
+                  <div className="flex justify-center gap-2">
+                    {filteredProducts
+                      .find((p) => p.id === openModal)
+                      ?.colors.map((_, index) => (
+                        <Button
+                          key={index}
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "w-2 h-2 rounded-full p-0",
+                            currentSlide === index
+                              ? "bg-primary"
+                              : "bg-gray-200"
+                          )}
+                          onClick={() => setCurrentSlide(index)}
+                        />
+                      ))}
+                  </div>
+
+                  <Button variant="ghost" size="icon" onClick={nextSlide}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </RootLayout>
   );

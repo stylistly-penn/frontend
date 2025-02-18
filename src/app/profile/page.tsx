@@ -8,6 +8,25 @@ import { useRef } from "react";
 import { get, patch, post_ml } from "@/app/util";
 import { startTaskPolling } from "./taskPoller";
 
+// Add this interface near the top of the file, after the imports
+interface AuthResponse {
+  authenticated: boolean;
+  user: {
+    season: {
+      name: string;
+      colors: Array<{
+        code: string;
+        color_id: number;
+      }>;
+    };
+  };
+}
+
+// Add this interface near the top with other interfaces
+interface SeasonUpdateEvent extends CustomEvent {
+  detail: { season: string };
+}
+
 const ProfilePage = () => {
   const stylists = [
     { name: "Fall", items: 12 },
@@ -102,21 +121,16 @@ const ProfilePage = () => {
     // Check for pending tasks when component mounts
     startTaskPolling();
 
-    // Add event listener for season updates
-    window.addEventListener(
-      "seasonUpdated",
-      handleSeasonUpdate as EventListener
-    );
+    const handleSeasonUpdateTyped =
+      handleSeasonUpdate as unknown as EventListener;
+    window.addEventListener("seasonUpdated", handleSeasonUpdateTyped);
 
     return () => {
-      window.removeEventListener(
-        "seasonUpdated",
-        handleSeasonUpdate as EventListener
-      );
+      window.removeEventListener("seasonUpdated", handleSeasonUpdateTyped);
     };
-  }, []); // Remove handleSeasonUpdate from dependencies
+  }, []);
 
-  const handleSeasonUpdate = async (event: CustomEvent) => {
+  const handleSeasonUpdate = async (event: SeasonUpdateEvent) => {
     const { season } = event.detail;
     if (!season) return;
 
@@ -125,17 +139,27 @@ const ProfilePage = () => {
       console.log("Updating season to:", season);
 
       // Send PATCH request with season name
-      const response = await patch(`seasons/user_update/`, {
+      await patch(`seasons/user_update/`, {
         jsonBody: { season },
       });
-      console.log("Season update response:", response);
 
-      // Update UI with response data
-      if (response.season) {
-        setUserSeason(response.season.name);
+      // Get fresh auth data
+      const authResponse = (await get("auth/check")) as AuthResponse;
+      if (authResponse.authenticated && authResponse.user.season) {
+        // Update localStorage
+        localStorage.setItem("season", authResponse.user.season.name);
+        localStorage.setItem(
+          "colorPalette",
+          JSON.stringify(authResponse.user.season.colors.map((c) => c.code))
+        );
+        localStorage.setItem(
+          "colorIds",
+          JSON.stringify(authResponse.user.season.colors.map((c) => c.color_id))
+        );
 
-        // Process colors from the response
-        const parsedColors = response.season.colors.map(
+        // Update UI state
+        setUserSeason(authResponse.user.season.name);
+        const parsedColors = authResponse.user.season.colors.map(
           (colorData: { code: string; color_id: number }) => {
             const rgbArray = colorData.code
               .replace(/\[|\]/g, "")

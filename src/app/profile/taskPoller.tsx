@@ -18,7 +18,6 @@ export const startTaskPolling = async () => {
       if (resultResponse && resultResponse.state === "SUCCESS") {
         console.log("Task completed successfully:", resultResponse);
 
-        // Extract and capitalize season name
         const season =
           resultResponse.result.Season.charAt(0).toUpperCase() +
           resultResponse.result.Season.slice(1).toLowerCase();
@@ -31,7 +30,29 @@ export const startTaskPolling = async () => {
           window._pollingInterval = null;
         }
 
-        // Dispatch event with just the season name
+        // Update season in backend
+        await patch(`seasons/user_update/`, {
+          jsonBody: { season },
+        });
+
+        // Get updated auth data including new season and colors
+        const authResponse = await get("auth/check");
+        if (authResponse.authenticated && authResponse.user.season) {
+          // Update localStorage with new season and color data
+          localStorage.setItem("season", authResponse.user.season.name);
+          localStorage.setItem(
+            "colorPalette",
+            JSON.stringify(authResponse.user.season.colors.map((c) => c.code))
+          );
+          localStorage.setItem(
+            "colorIds",
+            JSON.stringify(
+              authResponse.user.season.colors.map((c) => c.color_id)
+            )
+          );
+        }
+
+        // Dispatch event with season update
         window.dispatchEvent(
           new CustomEvent("seasonUpdated", {
             detail: { season },
