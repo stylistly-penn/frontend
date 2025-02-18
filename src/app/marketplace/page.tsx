@@ -241,13 +241,13 @@ const Marketplace = () => {
           `items/filter_by_color/${selectedColor}/?page=${currentPage}`
         );
       } else if (userSeasonId) {
-        // Use season filter route when no filters are selected
+        // Use season filter route when no filters are selected and user has a season
         response = await get(
           `items/filter_by_season/${userSeasonId}/?page=${currentPage}`
         );
       } else {
-        console.error("No valid filter criteria");
-        return;
+        // Use basic items route when no filters are selected and user has no season
+        response = await get(`items/?page=${currentPage}`);
       }
 
       const filtered = response.results.filter((product) => {
@@ -294,16 +294,7 @@ const Marketplace = () => {
 
   // Fetch products when needed
   useEffect(() => {
-    if (
-      userSeasonId ||
-      selectedColor ||
-      activeBrandId ||
-      orderBy !== "default" ||
-      searchQuery ||
-      currentPage > 1
-    ) {
-      fetchAndFilterProducts();
-    }
+    fetchAndFilterProducts();
   }, [
     userSeasonId,
     selectedColor,
