@@ -126,6 +126,7 @@ const Marketplace = () => {
   const [orderBy, setOrderBy] = useState<
     "default" | "euclidean_distance" | "price"
   >("default");
+  const [seasonLoading, setSeasonLoading] = useState(true);
 
   // Function to get color palette from localStorage
   const getColorPalette = () => {
@@ -188,13 +189,20 @@ const Marketplace = () => {
   // Function to get user's season ID
   const getUserSeason = async () => {
     try {
+      console.log("Fetching user season...");
+      setSeasonLoading(true);
       const response = await get("auth/check");
       const data: AuthResponse = response;
       if (data.authenticated && data.user.season) {
+        console.log("Setting userSeasonId to:", data.user.season.id);
         setUserSeasonId(data.user.season.id);
+      } else {
+        console.log("No season found for user");
       }
     } catch (error) {
       console.error("Error fetching user season:", error);
+    } finally {
+      setSeasonLoading(false);
     }
   };
 
@@ -209,11 +217,19 @@ const Marketplace = () => {
   };
 
   const fetchAndFilterProducts = async () => {
+    console.log("Fetching products with userSeasonId:", userSeasonId);
     setLoading(true);
     try {
       let response: PaginatedResponse;
 
-      // Always use filter_items when using non-default ordering or when brand is selected
+      // Log the conditions that determine which endpoint to use
+      console.log("Fetch conditions:", {
+        orderBy,
+        activeBrandId,
+        selectedColor,
+        userSeasonId,
+      });
+
       if (orderBy !== "default" || activeBrandId) {
         const queryParams = new URLSearchParams();
 
@@ -234,6 +250,9 @@ const Marketplace = () => {
           queryParams.append("order_by", orderBy);
         }
 
+        // Add page parameter
+        queryParams.append("page", currentPage.toString());
+
         response = await get(`items/filter_items/?${queryParams.toString()}`);
       } else if (selectedColor) {
         // Use color filter route when only color is selected
@@ -241,12 +260,12 @@ const Marketplace = () => {
           `items/filter_by_color/${selectedColor}/?page=${currentPage}`
         );
       } else if (userSeasonId) {
-        // Use season filter route when no filters are selected and user has a season
+        console.log("Using filter_by_season endpoint");
         response = await get(
           `items/filter_by_season/${userSeasonId}/?page=${currentPage}`
         );
       } else {
-        // Use basic items route when no filters are selected and user has no season
+        console.log("Using basic items endpoint");
         response = await get(`items/?page=${currentPage}`);
       }
 
@@ -292,10 +311,24 @@ const Marketplace = () => {
     fetchBrands();
   }, []);
 
-  // Fetch products when needed
+  // Modify the fetch products effect to wait for season loading
   useEffect(() => {
-    fetchAndFilterProducts();
+    console.log("Fetch products effect triggered with:", {
+      seasonLoading,
+      userSeasonId,
+      selectedColor,
+      activeBrandId,
+      searchQuery,
+      currentPage,
+      orderBy,
+    });
+
+    // Only fetch products after we know about the user's season
+    if (!seasonLoading) {
+      fetchAndFilterProducts();
+    }
   }, [
+    seasonLoading, // Add seasonLoading to dependencies
     userSeasonId,
     selectedColor,
     activeBrandId,
