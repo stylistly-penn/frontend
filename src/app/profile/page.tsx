@@ -12,6 +12,8 @@ import { startTaskPolling } from "./taskPoller";
 interface AuthResponse {
   authenticated: boolean;
   user: {
+    username: string;
+    email: string;
     season: {
       name: string;
       colors: Array<{
@@ -51,6 +53,7 @@ const ProfilePage = () => {
         const authResponse = (await get("auth/check")) as AuthResponse;
 
         if (authResponse.authenticated) {
+          localStorage.setItem("username", authResponse.user.username);
           if (authResponse.user.season === null) {
             // Clear any stale data from localStorage
             localStorage.removeItem("season");
