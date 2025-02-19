@@ -476,8 +476,16 @@ const Marketplace = () => {
                   key={`${product.id}-${
                     primaryColor?.color_id || "default"
                   }-${index}`}
-                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow relative"
                 >
+                  {/* Add ID Badge in top-right corner */}
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur-sm"
+                  >
+                    ID: {product.id}
+                  </Badge>
+
                   <Link href={`${product.product_url}`}>
                     <div className="aspect-[3/4] relative">
                       {primaryColor?.image_url && (

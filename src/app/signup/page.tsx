@@ -95,7 +95,9 @@ const SignUpPage = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">
+                      First Name <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="firstName"
                       name="firstName"
@@ -110,7 +112,9 @@ const SignUpPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">
+                      Last Name <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="lastName"
                       name="lastName"
@@ -126,7 +130,9 @@ const SignUpPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">
+                    Email <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="email"
                     name="email"
@@ -141,7 +147,9 @@ const SignUpPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="text">Username</Label>
+                  <Label htmlFor="username">
+                    Username <span className="text-slate-500">(optional)</span>
+                  </Label>
                   <Input
                     id="username"
                     name="username"
@@ -150,13 +158,15 @@ const SignUpPage = () => {
                     className="h-12"
                     value={formData.username}
                     onChange={handleChange}
-                    required
+                    required={false}
                     disabled={isLoading}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">
+                    Password <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="password"
                     name="password"

@@ -17,7 +17,10 @@ import { Label } from "@/components/ui/label";
 import AuthGuard from "@/components/authGuard";
 
 const LoginPage = () => {
-  const [username, setUsername] = useState("");
+  const [loginMethod, setLoginMethod] = useState<"username" | "email">(
+    "username"
+  );
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [userDetails, setUserDetails] = useState({});
   const [error, setError] = useState("");
@@ -29,13 +32,16 @@ const LoginPage = () => {
 
     try {
       const response = await post("auth/login/", {
-        jsonBody: { username: username, password },
+        jsonBody: {
+          [loginMethod]: identifier,
+          password,
+        },
       });
       if (!response) {
         throw new Error("Invalid response from server");
       }
       setUserDetails(response);
-      localStorage.setItem("username", username);
+      localStorage.setItem("username", identifier);
       if (response.user.season !== null) {
         const user_season = response.user.season.name;
         const colorCodes = response.user.season.colors.map(
@@ -72,15 +78,36 @@ const LoginPage = () => {
               <p className="text-red-500 text-sm text-center">{error}</p>
             )}
             <form className="space-y-4" onSubmit={handleLogin}>
+              <div className="flex space-x-4 mb-4">
+                <Button
+                  type="button"
+                  variant={loginMethod === "username" ? "default" : "outline"}
+                  onClick={() => setLoginMethod("username")}
+                  className="flex-1"
+                >
+                  Username
+                </Button>
+                <Button
+                  type="button"
+                  variant={loginMethod === "email" ? "default" : "outline"}
+                  onClick={() => setLoginMethod("email")}
+                  className="flex-1"
+                >
+                  Email
+                </Button>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="identifier">
+                  {loginMethod === "username" ? "Username" : "Email"}
+                </Label>
                 <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter your username"
+                  id="identifier"
+                  type={loginMethod === "email" ? "email" : "text"}
+                  placeholder={`Enter your ${loginMethod}`}
                   className="h-12"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                 />
               </div>
