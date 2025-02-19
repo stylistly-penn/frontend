@@ -241,13 +241,13 @@ const Marketplace = () => {
           `items/filter_by_color/${selectedColor}/?page=${currentPage}`
         );
       } else if (userSeasonId) {
-        // Use season filter route when no filters are selected
+        // Use season filter route when no filters are selected and user has a season
         response = await get(
           `items/filter_by_season/${userSeasonId}/?page=${currentPage}`
         );
       } else {
-        console.error("No valid filter criteria");
-        return;
+        // Use basic items route when no filters are selected and user has no season
+        response = await get(`items/?page=${currentPage}`);
       }
 
       const filtered = response.results.filter((product) => {
@@ -294,16 +294,7 @@ const Marketplace = () => {
 
   // Fetch products when needed
   useEffect(() => {
-    if (
-      userSeasonId ||
-      selectedColor ||
-      activeBrandId ||
-      orderBy !== "default" ||
-      searchQuery ||
-      currentPage > 1
-    ) {
-      fetchAndFilterProducts();
-    }
+    fetchAndFilterProducts();
   }, [
     userSeasonId,
     selectedColor,
@@ -485,8 +476,16 @@ const Marketplace = () => {
                   key={`${product.id}-${
                     primaryColor?.color_id || "default"
                   }-${index}`}
-                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow relative"
                 >
+                  {/* Add ID Badge in top-right corner */}
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur-sm"
+                  >
+                    ID: {product.id}
+                  </Badge>
+
                   <Link href={`${product.product_url}`}>
                     <div className="aspect-[3/4] relative">
                       {primaryColor?.image_url && (

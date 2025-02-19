@@ -46,41 +46,60 @@ const ProfilePage = () => {
 
   // Load and process color palette from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (localStorage.getItem("season") === null) {
-        // alert("Please upload photo first");
-      } else {
-        setUserSeason(localStorage.getItem("season"));
-        const storedColors = localStorage.getItem("colorPalette");
-        const storedColorIds = localStorage.getItem("colorIds");
-        console.log(storedColors);
-        console.log(storedColorIds);
+    const checkAuthAndUpdateSeason = async () => {
+      try {
+        const authResponse = (await get("auth/check")) as AuthResponse;
 
-        if (storedColors && storedColorIds) {
-          const colorIds = JSON.parse(storedColorIds); // Parse stored color IDs
-          const parsedColors = JSON.parse(storedColors).map((color, index) => {
-            const rgbArray = color
-              .replace(/\[|\]/g, "") // Remove brackets
-              .split(" ") // Split into individual values
-              .map(Number);
+        if (authResponse.authenticated) {
+          if (authResponse.user.season === null) {
+            // Clear any stale data from localStorage
+            localStorage.removeItem("season");
+            localStorage.removeItem("colorPalette");
+            localStorage.removeItem("colorIds");
+            setUserSeason(null);
+            setUserColorPalette([]);
+            setUserColorIds([]);
+          } else {
+            // Update with fresh data from auth
+            localStorage.setItem("season", authResponse.user.season.name);
+            localStorage.setItem(
+              "colorPalette",
+              JSON.stringify(authResponse.user.season.colors.map((c) => c.code))
+            );
+            localStorage.setItem(
+              "colorIds",
+              JSON.stringify(
+                authResponse.user.season.colors.map((c) => c.color_id)
+              )
+            );
 
-            return {
-              id: colorIds[index], // Take ID from colorIds array
-              name: color.name || `Color ${index + 1}`,
-              color_array: `[${rgbArray.join(",")}]`,
-              rgb: `rgb(${rgbArray.join(",")})`,
-            };
-          });
-          console.log("Parsed colors:", parsedColors);
-          console.log("Color IDs:", colorIds);
-          setUserColorPalette(parsedColors);
-          setUserColorIds(colorIds);
+            setUserSeason(authResponse.user.season.name);
+            const parsedColors = authResponse.user.season.colors.map(
+              (colorData: { code: string; color_id: number }) => {
+                const rgbArray = colorData.code
+                  .replace(/\[|\]/g, "")
+                  .split(" ")
+                  .map(Number);
+
+                return {
+                  id: colorData.color_id,
+                  name: `Color ${colorData.color_id}`,
+                  rgb: `rgb(${rgbArray.join(",")})`,
+                };
+              }
+            );
+
+            setUserColorPalette(parsedColors);
+            setUserColorIds(parsedColors.map((color) => color.id));
+          }
         }
-        console.log("User color palette:", userColorPalette);
-        console.log("User color IDs:", userColorIds);
+      } catch (error) {
+        console.error("Error checking auth:", error);
       }
-    }
-  }, []);
+    };
+
+    checkAuthAndUpdateSeason();
+  }, []); // Run once on mount
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -184,7 +203,7 @@ const ProfilePage = () => {
     }
   };
 
-  // Update the season information section to show loading state
+  // Update the season information section to show loading state or "No season" when null
   const renderSeasonInfo = () => (
     <div className="mb-8">
       <h1 className="text-3xl font-bold mb-2">
@@ -198,7 +217,7 @@ const ProfilePage = () => {
           </div>
         ) : (
           <p className="text-lg font-semibold text-indigo-600">
-            {userSeason || "Not found"}
+            {userSeason || "No season"}
           </p>
         )}
 
