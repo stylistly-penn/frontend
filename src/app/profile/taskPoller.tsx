@@ -1,7 +1,41 @@
 import { get, get_ml, patch, post_ml } from "@/app/util";
 
+// Add interface for the task result
+interface TaskResult {
+  state: string;
+  result?: {
+    Season: string;
+  };
+}
+
+// Add interface for the auth response
+interface AuthResponse {
+  authenticated: boolean;
+  user: {
+    username: string;
+    email: string;
+    season: {
+      name: string;
+      colors: Array<{
+        code: string;
+        color_id: number;
+      }>;
+    };
+  };
+}
+
+// Add this type declaration for the global window object
+declare global {
+  interface Window {
+    _pollingInterval: number | null;
+  }
+}
+
 // In a separate file: taskPoller.ts
 export const startTaskPolling = async () => {
+  // Safety check for server-side rendering
+  if (typeof window === "undefined") return;
+
   const taskId = localStorage.getItem("task_id");
   if (!taskId) return;
 
@@ -10,7 +44,7 @@ export const startTaskPolling = async () => {
 
   const pollTaskResult = async () => {
     try {
-      const resultResponse = await get_ml(`/result/${taskId}`);
+      const resultResponse = await get_ml<TaskResult>(`/result/${taskId}`);
 
       console.log("Polling result:", resultResponse);
       console.log(resultResponse.state);
@@ -19,8 +53,8 @@ export const startTaskPolling = async () => {
         console.log("Task completed successfully:", resultResponse);
 
         const season =
-          resultResponse.result.Season.charAt(0).toUpperCase() +
-          resultResponse.result.Season.slice(1).toLowerCase();
+          resultResponse.result!.Season.charAt(0).toUpperCase() +
+          resultResponse.result!.Season.slice(1).toLowerCase();
         console.log("Detected season:", season);
 
         // Clear task_id and stop polling
@@ -36,18 +70,24 @@ export const startTaskPolling = async () => {
         });
 
         // Get updated auth data including new season and colors
-        const authResponse = await get("auth/check");
+        const authResponse = await get<AuthResponse>("auth/check");
         if (authResponse.authenticated && authResponse.user.season) {
           // Update localStorage with new season and color data
           localStorage.setItem("season", authResponse.user.season.name);
           localStorage.setItem(
             "colorPalette",
-            JSON.stringify(authResponse.user.season.colors.map((c) => c.code))
+            JSON.stringify(
+              authResponse.user.season.colors.map(
+                (c: { code: string }) => c.code
+              )
+            )
           );
           localStorage.setItem(
             "colorIds",
             JSON.stringify(
-              authResponse.user.season.colors.map((c) => c.color_id)
+              authResponse.user.season.colors.map(
+                (c: { color_id: number }) => c.color_id
+              )
             )
           );
         }

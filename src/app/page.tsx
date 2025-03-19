@@ -1,10 +1,13 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Palette, ShoppingBag, Wand2 } from "lucide-react";
+import dynamic from "next/dynamic";
 
+// Make the homepage client-side only
 const HomePage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -115,7 +118,8 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+// Export as a dynamic component with SSR disabled
+export default dynamic(() => Promise.resolve(HomePage), { ssr: false });
 
 // import Link from "next/link";
 

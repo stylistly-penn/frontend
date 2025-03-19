@@ -20,9 +20,12 @@ import AuthGuard from "@/components/authGuard";
 import { PassThrough } from "stream";
 import { useRouter } from "next/navigation";
 import { post } from "@/app/util";
+import dynamic from "next/dynamic";
+import { notFound } from "next/navigation";
 
 const SignUpPage = () => {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
   const [formData, setFormData] = React.useState({
     firstName: "",
     lastName: "",
@@ -37,24 +40,37 @@ const SignUpPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Add your signup logic here
-    const response = await post("auth/register/", {
-      jsonBody: {
-        email: formData.email,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        username: formData.username,
-        password: formData.password,
-        password2: formData.confirmPassword,
-      },
-    });
-    if (!response) {
-      throw new Error("Invalid response from server");
+    setError("");
+
+    try {
+      const response = await post("auth/register/", {
+        jsonBody: {
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          username: formData.username,
+          password: formData.password,
+          password2: formData.confirmPassword,
+        },
+      });
+
+      if (!response) {
+        throw new Error("Invalid response from server");
+      }
+
+      console.log(response);
+      // Redirect to login page
+      router.push("/login");
+    } catch (err: any) {
+      setError(err.message || "An error occurred during registration");
+
+      // Handle 404 error
+      if (err.status === 404) {
+        notFound();
+      }
+    } finally {
+      setIsLoading(false);
     }
-    console.log(response);
-    // Redirect to login page
-    router.push("/login");
-    setTimeout(() => setIsLoading(false), 1000); // Simulated delay
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +107,9 @@ const SignUpPage = () => {
             </CardHeader>
 
             <CardContent className="space-y-6">
+              {error && (
+                <p className="text-red-500 text-sm text-center">{error}</p>
+              )}
               {/* Sign Up Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -184,7 +203,7 @@ const SignUpPage = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -224,4 +243,5 @@ const SignUpPage = () => {
   );
 };
 
-export default SignUpPage;
+// Export with dynamic import and SSR disabled
+export default dynamic(() => Promise.resolve(SignUpPage), { ssr: false });
