@@ -15,6 +15,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AuthGuard from "@/components/authGuard";
+import dynamic from "next/dynamic";
+import { notFound } from "next/navigation";
+
+interface AuthLoginResponse {
+  user?: {
+    season?: {
+      name: string;
+      colors: {
+        code: string;
+        color_id: number;
+      }[];
+    } | null;
+  };
+}
 
 const LoginPage = () => {
   const [loginMethod, setLoginMethod] = useState<"username" | "email">(
@@ -24,39 +38,57 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [userDetails, setUserDetails] = useState({});
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
-      const response = await post("auth/login/", {
+      const response = await post<AuthLoginResponse>("auth/login/", {
         jsonBody: {
           [loginMethod]: identifier,
           password,
         },
       });
+
       if (!response) {
         throw new Error("Invalid response from server");
       }
+
       setUserDetails(response);
-      localStorage.setItem("username", identifier);
-      if (response.user.season !== null) {
-        const user_season = response.user.season.name;
-        const colorCodes = response.user.season.colors.map(
-          (color) => color.code
-        );
-        const colorIds = response.user.season.colors.map(
-          (color) => color.color_id
-        );
-        localStorage.setItem("season", user_season);
-        localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
-        localStorage.setItem("colorIds", JSON.stringify(colorIds));
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("username", identifier);
+        if (
+          response.user?.season !== null &&
+          response.user?.season !== undefined
+        ) {
+          const user_season = response.user.season.name;
+          const colorCodes = response.user.season.colors.map(
+            (color) => color.code
+          );
+          const colorIds = response.user.season.colors.map(
+            (color) => color.color_id
+          );
+          localStorage.setItem("season", user_season);
+          localStorage.setItem("colorPalette", JSON.stringify(colorCodes));
+          localStorage.setItem("colorIds", JSON.stringify(colorIds));
+        }
       }
+
       router.push("/profile");
     } catch (err: any) {
       setError(err.message || "An error occurred during login");
+
+      // Handle 404 error
+      if (err.status === 404) {
+        notFound();
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,6 +116,7 @@ const LoginPage = () => {
                   variant={loginMethod === "username" ? "default" : "outline"}
                   onClick={() => setLoginMethod("username")}
                   className="flex-1"
+                  disabled={isLoading}
                 >
                   Username
                 </Button>
@@ -92,6 +125,7 @@ const LoginPage = () => {
                   variant={loginMethod === "email" ? "default" : "outline"}
                   onClick={() => setLoginMethod("email")}
                   className="flex-1"
+                  disabled={isLoading}
                 >
                   Email
                 </Button>
@@ -109,6 +143,7 @@ const LoginPage = () => {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -122,6 +157,7 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -130,6 +166,7 @@ const LoginPage = () => {
                   <Button
                     variant="link"
                     className="px-0 font-normal text-indigo-600"
+                    disabled={isLoading}
                   >
                     Forgot password?
                   </Button>
@@ -138,6 +175,7 @@ const LoginPage = () => {
                   <Button
                     variant="link"
                     className="px-0 font-normal text-indigo-600"
+                    disabled={isLoading}
                   >
                     Create account
                   </Button>
@@ -147,8 +185,9 @@ const LoginPage = () => {
               <Button
                 type="submit"
                 className="w-full h-12 bg-indigo-600 hover:bg-indigo-700"
+                disabled={isLoading}
               >
-                Sign in
+                {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
           </CardContent>
@@ -158,4 +197,5 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+// Export with dynamic import and SSR disabled
+export default dynamic(() => Promise.resolve(LoginPage), { ssr: false });

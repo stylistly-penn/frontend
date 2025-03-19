@@ -1,15 +1,23 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ShoppingCart, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { post } from "@/app/util";
+import dynamic from "next/dynamic";
+import { notFound } from "next/navigation";
 
 const Navigation = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Make sure localStorage is only accessed client-side
+  useEffect(() => {
+    // Client-side initialization logic if needed
+  }, []);
 
   const navItems = [
     { href: "/profile", label: "Profile", icon: User },
@@ -17,10 +25,28 @@ const Navigation = () => {
   ];
 
   const handleLogout = async () => {
-    localStorage.clear(); // Clear user data
-    const response = await post("auth/logout/");
-    console.log(response);
-    router.push("/"); // Redirect to home
+    try {
+      setIsLoading(true);
+
+      // Only access localStorage on the client
+      if (typeof window !== "undefined") {
+        localStorage.clear(); // Clear user data
+      }
+
+      const response = await post("auth/logout/");
+      console.log(response);
+
+      router.push("/"); // Redirect to home
+    } catch (error: any) {
+      console.error("Logout error:", error);
+
+      // Handle 404 error
+      if (error.status === 404) {
+        notFound();
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -42,6 +68,7 @@ const Navigation = () => {
                     "relative",
                     pathname === href && "bg-gray-100 text-gray-900"
                   )}
+                  disabled={isLoading}
                 >
                   <Icon className="h-5 w-5 mr-2" />
                   {label}
@@ -53,9 +80,13 @@ const Navigation = () => {
             ))}
 
             {/* Logout Button */}
-            <Button variant="outline" onClick={handleLogout}>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              disabled={isLoading}
+            >
               <LogOut className="h-5 w-5 mr-2" />
-              Logout
+              {isLoading ? "Logging out..." : "Logout"}
             </Button>
           </div>
         </div>
@@ -64,4 +95,5 @@ const Navigation = () => {
   );
 };
 
-export default Navigation;
+// Export with dynamic import and SSR disabled
+export default dynamic(() => Promise.resolve(Navigation), { ssr: false });

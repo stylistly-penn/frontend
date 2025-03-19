@@ -54,7 +54,12 @@ async function request<T>(
     throw new Error(`Request failed with status ${response.status}`);
   }
 
-  // Attempt to parse JSON response (adjust if your server sometimes returns non-JSON)
+  // For 204 No Content responses, return an empty object
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  // Attempt to parse JSON response
   return response.json() as Promise<T>;
 }
 

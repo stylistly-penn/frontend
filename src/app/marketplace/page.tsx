@@ -16,8 +16,11 @@ import {
   ChevronRight,
   X,
   Maximize2,
+  List,
+  Check,
+  PlusCircle,
 } from "lucide-react";
-import { get } from "@/app/util";
+import { get, post, del } from "@/app/util";
 import { useState, useEffect } from "react";
 import RootLayout from "@/components/rootlayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +39,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 interface ColorPalette {
   id: number;
@@ -103,6 +116,29 @@ interface BrandResponse {
   results: Brand[];
 }
 
+// Add new interface for Lists
+interface List {
+  id: number;
+  name: string;
+  item_count: number;
+}
+
+// Add new interface for Lists response
+interface ListsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: List[];
+}
+
+// Add interface for list items status
+interface ListItemStatus {
+  [listId: number]: {
+    isChecking: boolean;
+    hasItem: boolean;
+  };
+}
+
 const Marketplace = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -127,28 +163,45 @@ const Marketplace = () => {
     "default" | "euclidean_distance" | "price"
   >("default");
   const [seasonLoading, setSeasonLoading] = useState(true);
+  const [userLists, setUserLists] = useState<List[]>([]);
+  const [isLoadingLists, setIsLoadingLists] = useState(false);
+  const [activeListDropdown, setActiveListDropdown] = useState<number | null>(
+    null
+  );
+  const [selectedLists, setSelectedLists] = useState<Record<number, boolean>>(
+    {}
+  );
+  const [listItemStatus, setListItemStatus] = useState<ListItemStatus>({});
+  const [newListName, setNewListName] = useState("");
+  const [isCreatingList, setIsCreatingList] = useState(false);
+  const [isAddingToLists, setIsAddingToLists] = useState(false);
 
   // Function to get color palette from localStorage
   const getColorPalette = () => {
+    // Safety check for server-side rendering
+    if (typeof window === "undefined") return;
+
     console.log(localStorage);
     const storedColors = localStorage.getItem("colorPalette");
     const storedColorIds = localStorage.getItem("colorIds");
 
     if (storedColors && storedColorIds) {
       const colorIds = JSON.parse(storedColorIds); // Parse stored color IDs
-      const parsedColors = JSON.parse(storedColors).map((color, index) => {
-        const rgbArray = color
-          .replace(/\[|\]/g, "") // Remove brackets
-          .split(" ") // Split into individual values
-          .map(Number);
+      const parsedColors = JSON.parse(storedColors).map(
+        (color: string, index: number) => {
+          const rgbArray = color
+            .replace(/\[|\]/g, "") // Remove brackets
+            .split(" ") // Split into individual values
+            .map(Number);
 
-        return {
-          id: colorIds[index], // Take ID from colorIds array
-          name: color.name || `Color ${index + 1}`,
-          color_array: `[${rgbArray.join(",")}]`,
-          rgb: `rgb(${rgbArray.join(",")})`,
-        };
-      });
+          return {
+            id: colorIds[index], // Take ID from colorIds array
+            name: `Color ${index + 1}`, // Since color is a string, it doesn't have a name property
+            color_array: `[${rgbArray.join(",")}]`,
+            rgb: `rgb(${rgbArray.join(",")})`,
+          };
+        }
+      );
       console.log("Parsed colors:", parsedColors);
       console.log("Color IDs:", colorIds);
       setUserColorPalette(parsedColors);
@@ -191,7 +244,7 @@ const Marketplace = () => {
     try {
       console.log("Fetching user season...");
       setSeasonLoading(true);
-      const response = await get("auth/check");
+      const response = await get<AuthResponse>("auth/check");
       const data: AuthResponse = response;
       if (data.authenticated && data.user.season) {
         console.log("Setting userSeasonId to:", data.user.season.id);
@@ -337,6 +390,53 @@ const Marketplace = () => {
     orderBy,
   ]);
 
+  // Function to fetch user's lists
+  const fetchUserLists = async () => {
+    setIsLoadingLists(true);
+    try {
+      const response = await get<ListsResponse>("lists/");
+      const listsData = response.results || [];
+
+      // For each list, get the items count
+      const listsWithItemCount = await Promise.all(
+        listsData.map(async (list) => {
+          try {
+            const itemsResponse = await get<{
+              count: number;
+              next: string | null;
+              previous: string | null;
+              results: any[];
+            }>(`lists/${list.id}/items/`);
+
+            const items = itemsResponse.results || [];
+            return {
+              ...list,
+              item_count: items.length,
+            };
+          } catch (error) {
+            console.error(`Error fetching items for list ${list.id}:`, error);
+            return {
+              ...list,
+              item_count: 0,
+            };
+          }
+        })
+      );
+
+      setUserLists(listsWithItemCount);
+    } catch (error) {
+      console.error("Error fetching user lists:", error);
+      toast.error("Failed to load your lists");
+    } finally {
+      setIsLoadingLists(false);
+    }
+  };
+
+  // Add useEffect to fetch lists
+  useEffect(() => {
+    fetchUserLists();
+  }, []);
+
   const toggleProductExpansion = (productId: number) => {
     setExpandedProducts((prev) => {
       const newSet = new Set(prev);
@@ -379,6 +479,218 @@ const Marketplace = () => {
     setCurrentSlide(
       (prev) => (prev - 1 + product.colors.length) % product.colors.length
     );
+  };
+
+  // Function to toggle list dropdown
+  const toggleListDropdown = (productId: number | null) => {
+    if (productId === activeListDropdown) {
+      // Closing the dropdown
+      setActiveListDropdown(null);
+    } else {
+      // Opening the dropdown for a different product
+      setActiveListDropdown(productId);
+
+      // Reset selected lists and check which lists contain this item
+      setSelectedLists({});
+      setListItemStatus({});
+
+      if (productId !== null) {
+        checkItemInLists(productId);
+      }
+    }
+  };
+
+  // New function to check if an item exists in each list
+  const checkItemInLists = async (productId: number) => {
+    // Initialize all lists with loading state
+    const initialStatus: ListItemStatus = {};
+    userLists.forEach((list) => {
+      initialStatus[list.id] = { isChecking: true, hasItem: false };
+    });
+    setListItemStatus(initialStatus);
+
+    // Check each list in parallel
+    try {
+      const checks = await Promise.all(
+        userLists.map(async (list) => {
+          try {
+            // API call to check if item exists in list - fixed URL format & response format
+            const response = await get<{ has_item: boolean }>(
+              `lists/${list.id}/has_item/?item_id=${productId}`
+            );
+            console.log(`List ${list.id} has_item response:`, response);
+            return { listId: list.id, hasItem: response.has_item };
+          } catch (error) {
+            console.error(`Error checking item in list ${list.id}:`, error);
+            return { listId: list.id, hasItem: false };
+          }
+        })
+      );
+
+      // Update status and selected lists based on results
+      const newStatus: ListItemStatus = {};
+      const newSelectedLists: Record<number, boolean> = {};
+
+      checks.forEach(({ listId, hasItem }) => {
+        newStatus[listId] = { isChecking: false, hasItem };
+        newSelectedLists[listId] = hasItem;
+      });
+
+      setListItemStatus(newStatus);
+      setSelectedLists(newSelectedLists);
+    } catch (error) {
+      console.error("Error checking lists:", error);
+
+      // Mark all as not checking in case of error
+      const errorStatus: ListItemStatus = {};
+      userLists.forEach((list) => {
+        errorStatus[list.id] = { isChecking: false, hasItem: false };
+      });
+      setListItemStatus(errorStatus);
+    }
+  };
+
+  // Function to toggle list selection
+  const toggleListSelection = (listId: number) => {
+    setSelectedLists((prev) => ({
+      ...prev,
+      [listId]: !prev[listId],
+    }));
+  };
+
+  // Function to create a new list and select it
+  const handleCreateList = async () => {
+    if (!newListName.trim()) {
+      toast.error("Please enter a list name");
+      return;
+    }
+
+    setIsCreatingList(true);
+    try {
+      const newList = await post<List>("lists/", {
+        jsonBody: { name: newListName.trim() },
+      });
+
+      // Refresh lists to get updated counts
+      await fetchUserLists();
+
+      // Auto-select the new list
+      setSelectedLists((prev) => ({
+        ...prev,
+        [newList.id]: true,
+      }));
+
+      setNewListName("");
+      toast.success(`Created new list: ${newList.name}`);
+    } catch (error) {
+      console.error("Error creating new list:", error);
+      toast.error("Failed to create new list");
+    } finally {
+      setIsCreatingList(false);
+    }
+  };
+
+  // Updated function to handle both adding and removing items
+  const addToSelectedLists = async (product: Product) => {
+    setIsAddingToLists(true);
+    console.log("Selected lists state:", selectedLists);
+    console.log("List item status:", listItemStatus);
+
+    const addPromises: Promise<any>[] = [];
+    const removePromises: Promise<any>[] = [];
+
+    // Process each list
+    for (const listId in selectedLists) {
+      const listIdNum = parseInt(listId, 10);
+      const isSelected = selectedLists[listIdNum];
+      const previousStatus = listItemStatus[listIdNum];
+
+      console.log(
+        `List ${listId} - selected: ${isSelected}, previous status:`,
+        previousStatus
+      );
+
+      // If currently selected and wasn't in the list before, add it
+      if (isSelected && (!previousStatus || !previousStatus.hasItem)) {
+        console.log(`Adding item ${product.id} to list ${listId}`);
+        addPromises.push(
+          post(`lists/${listId}/add_item/`, {
+            jsonBody: { item_id: product.id },
+          }).catch((error) => {
+            console.error(`Error adding item to list ${listId}:`, error);
+            toast.error(
+              `Failed to add item to list ${
+                userLists.find((l) => l.id === listIdNum)?.name || listId
+              }`
+            );
+            return null;
+          })
+        );
+      }
+      // If not selected now but was in the list before, remove it
+      else if (!isSelected && previousStatus && previousStatus.hasItem) {
+        console.log(`Removing item ${product.id} from list ${listId}`);
+        removePromises.push(
+          post(`lists/${listId}/remove_item/`, {
+            jsonBody: { item_id: product.id },
+          }).catch((error) => {
+            console.error(`Error removing item from list ${listId}:`, error);
+            toast.error(
+              `Failed to remove item from list ${
+                userLists.find((l) => l.id === listIdNum)?.name || listId
+              }`
+            );
+            return null;
+          })
+        );
+      }
+    }
+
+    try {
+      // Wait for all operations to complete
+      const [addResults, removeResults] = await Promise.all([
+        Promise.all(addPromises),
+        Promise.all(removePromises),
+      ]);
+
+      // Count successful operations
+      const addCount = addResults.filter((result) => result !== null).length;
+      const removeCount = removeResults.filter(
+        (result) => result !== null
+      ).length;
+
+      // Show success message
+      if (addCount > 0 && removeCount > 0) {
+        toast.success(
+          `Added to ${addCount} list(s) and removed from ${removeCount} list(s)`
+        );
+      } else if (addCount > 0) {
+        toast.success(`Added to ${addCount} list(s)`);
+      } else if (removeCount > 0) {
+        toast.success(`Removed from ${removeCount} list(s)`);
+      } else if (
+        addCount === 0 &&
+        removeCount === 0 &&
+        (addPromises.length > 0 || removePromises.length > 0)
+      ) {
+        toast.error("Failed to update lists");
+      } else {
+        toast.info("No changes made to lists");
+      }
+
+      // Refresh list counts if any changes were made
+      if (addCount > 0 || removeCount > 0) {
+        await fetchUserLists();
+      }
+
+      // Close dropdown
+      setActiveListDropdown(null);
+    } catch (error) {
+      console.error("Error updating lists:", error);
+      toast.error("An error occurred while updating lists");
+    } finally {
+      setIsAddingToLists(false);
+    }
   };
 
   return (
@@ -509,7 +821,7 @@ const Marketplace = () => {
                   key={`${product.id}-${
                     primaryColor?.color_id || "default"
                   }-${index}`}
-                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow relative"
+                  className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow relative group"
                 >
                   {/* Add ID Badge in top-right corner */}
                   <Badge
@@ -518,6 +830,165 @@ const Marketplace = () => {
                   >
                     ID: {product.id}
                   </Badge>
+
+                  {/* Add to List Button */}
+                  <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu
+                      open={activeListDropdown === product.id}
+                      onOpenChange={() =>
+                        toggleListDropdown(
+                          activeListDropdown === product.id ? null : product.id
+                        )
+                      }
+                    >
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="gap-1 bg-white/90 backdrop-blur-sm hover:bg-white"
+                        >
+                          <List className="h-4 w-4" />
+                          Add to List
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-56"
+                        align="start"
+                        onCloseAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <DropdownMenuLabel>Add to List</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+
+                        {userLists.length === 0 ? (
+                          <div className="px-2 py-2 text-sm text-center">
+                            No lists found. Create one below.
+                          </div>
+                        ) : (
+                          <div className="max-h-[200px] overflow-y-auto">
+                            {userLists.map((list) => (
+                              <div
+                                key={list.id}
+                                className="px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded-sm"
+                                onClick={() => {
+                                  if (!listItemStatus[list.id]?.isChecking) {
+                                    toggleListSelection(list.id);
+                                    console.log(
+                                      "Toggled list",
+                                      list.id,
+                                      "to",
+                                      !selectedLists[list.id]
+                                    );
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-2">
+                                    {listItemStatus[list.id]?.isChecking ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <div
+                                        className={`w-4 h-4 rounded-sm border ${
+                                          selectedLists[list.id]
+                                            ? "bg-primary border-primary"
+                                            : "border-gray-300"
+                                        } flex items-center justify-center`}
+                                      >
+                                        {selectedLists[list.id] && (
+                                          <Check className="h-3 w-3 text-white" />
+                                        )}
+                                        {!selectedLists[list.id] &&
+                                          listItemStatus[list.id]?.hasItem && (
+                                            <div className="h-[2px] w-2 bg-gray-600"></div>
+                                          )}
+                                      </div>
+                                    )}
+                                    <span className="ml-2">{list.name}</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    {!listItemStatus[list.id]?.isChecking && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {list.item_count || 0} items
+                                      </span>
+                                    )}
+                                    {!listItemStatus[list.id]?.isChecking &&
+                                      selectedLists[list.id] !==
+                                        listItemStatus[list.id]?.hasItem && (
+                                        <Badge
+                                          variant={
+                                            selectedLists[list.id]
+                                              ? "default"
+                                              : "destructive"
+                                          }
+                                          className="ml-2 text-[10px] px-1 py-0 h-4"
+                                        >
+                                          {selectedLists[list.id]
+                                            ? "Add"
+                                            : "Remove"}
+                                        </Badge>
+                                      )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <DropdownMenuSeparator />
+
+                        {/* Create New List */}
+                        <div className="p-2">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Input
+                              placeholder="New list name"
+                              value={newListName}
+                              onChange={(e) => setNewListName(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="px-2 h-8"
+                              onClick={handleCreateList}
+                              disabled={isCreatingList || !newListName.trim()}
+                            >
+                              {isCreatingList ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PlusCircle className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+
+                          {/* Apply Button */}
+                          <Button
+                            className="w-full"
+                            size="sm"
+                            onClick={() => addToSelectedLists(product)}
+                            disabled={
+                              isAddingToLists ||
+                              !Object.keys(listItemStatus).some(
+                                (listId) =>
+                                  selectedLists[parseInt(listId)] !==
+                                  listItemStatus[parseInt(listId)]?.hasItem
+                              )
+                            }
+                          >
+                            {isAddingToLists ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Updating...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Apply Changes
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
                   <Link href={`${product.product_url}`}>
                     <div className="aspect-[3/4] relative">

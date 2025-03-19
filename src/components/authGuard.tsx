@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { get } from "@/app/util"; // ✅ Import `get` from util.ts
+import { get } from "@/app/util";
+import { notFound } from "next/navigation";
 
 interface AuthCheckResponse {
   authenticated: boolean;
@@ -18,10 +19,15 @@ const AuthGuard = ({
 }) => {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Only run on client-side
+    if (typeof window === "undefined") return;
+
     const checkAuth = async () => {
       console.log("🔍 Checking authentication via /auth/check/...");
+      setLoading(true);
 
       try {
         const data = await get<AuthCheckResponse>("/auth/check/");
@@ -43,18 +49,31 @@ const AuthGuard = ({
       } catch (error) {
         console.error("❌ Error checking authentication:", error);
         setIsAuthenticated(false);
+
+        // Handle data not found gracefully
+        if ((error as any)?.status === 404) {
+          notFound();
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
     checkAuth();
   }, [isPublic, router]);
 
-  if (isAuthenticated === null) {
+  // Display loading state
+  if (loading || isAuthenticated === null) {
     console.log("⏳ Loading authentication state...");
-    return <div>Loading...</div>; // Prevents flickering
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
   }
 
   return <>{children}</>;
 };
 
+// Export with dynamic import to disable SSR for this component
 export default AuthGuard;
