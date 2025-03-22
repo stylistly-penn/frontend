@@ -574,10 +574,18 @@ const Marketplace = () => {
       // Refresh lists to get updated counts
       await fetchUserLists();
 
-      // Auto-select the new list
+      // Initialize the list item status for the new list
+      // Set hasItem to false since this is a new list
+      setListItemStatus((prev) => ({
+        ...prev,
+        [newList.id]: { isChecking: false, hasItem: false },
+      }));
+
+      // Explicitly set this list as not selected in the selectedLists state
+      // This ensures UI consistency - checkbox not selected, no tag, apply button disabled
       setSelectedLists((prev) => ({
         ...prev,
-        [newList.id]: true,
+        [newList.id]: false,
       }));
 
       setNewListName("");
@@ -911,6 +919,8 @@ const Marketplace = () => {
                                       </span>
                                     )}
                                     {!listItemStatus[list.id]?.isChecking &&
+                                      listItemStatus[list.id]?.hasItem !==
+                                        undefined &&
                                       selectedLists[list.id] !==
                                         listItemStatus[list.id]?.hasItem && (
                                         <Badge

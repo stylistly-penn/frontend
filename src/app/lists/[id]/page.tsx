@@ -5,7 +5,15 @@ import RootLayout from "@/components/rootlayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowUp, ArrowDown, ChevronLeft, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  Trash2,
+  Maximize2,
+  ChevronRight,
+} from "lucide-react";
 import { get, del, post } from "@/app/util";
 import Link from "next/link";
 import {
@@ -29,6 +37,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 // Add BASE_URL constant
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -84,6 +99,8 @@ const ListDetailPage = () => {
   const [reverse, setReverse] = useState<boolean>(true);
   const [isClient, setIsClient] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [openModal, setOpenModal] = useState<number | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // Helper function to parse RGB string
   const parseRGB = (rgbStr: string) => {
@@ -191,6 +208,33 @@ const ListDetailPage = () => {
     } finally {
       setIsRemoving(false);
     }
+  };
+
+  const handleExpand = (itemId: number) => {
+    setOpenModal(itemId);
+    setCurrentSlide(0);
+  };
+
+  const handleClose = () => {
+    setOpenModal(null);
+    setCurrentSlide(0);
+  };
+
+  const nextSlide = () => {
+    if (!openModal) return;
+    const listItem = items.find((item) => item.item.id === openModal);
+    if (!listItem || !listItem.item.colors) return;
+    setCurrentSlide((prev) => (prev + 1) % listItem.item.colors.length);
+  };
+
+  const prevSlide = () => {
+    if (!openModal) return;
+    const listItem = items.find((item) => item.item.id === openModal);
+    if (!listItem || !listItem.item.colors) return;
+    setCurrentSlide(
+      (prev) =>
+        (prev - 1 + listItem.item.colors.length) % listItem.item.colors.length
+    );
   };
 
   return (
@@ -410,11 +454,146 @@ const ListDetailPage = () => {
                       </p>
                     </div>
                   </Link>
+
+                  {/* Expand Button for multiple colors */}
+                  {item.colors?.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      className="w-full mt-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleExpand(item.id);
+                      }}
+                    >
+                      <Maximize2 className="h-4 w-4 mr-2" />
+                      Show {item.colors.length - 1} More Colors
+                    </Button>
+                  )}
                 </Card>
               );
             })}
           </div>
         )}
+
+        {/* Color Variants Modal */}
+        <Dialog open={openModal !== null} onOpenChange={() => handleClose()}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Color Variants</DialogTitle>
+            </DialogHeader>
+
+            {openModal && (
+              <div className="relative">
+                <div className="flex items-center justify-center">
+                  {/* Current Slide */}
+                  {items
+                    .find((item) => item.item.id === openModal)
+                    ?.item.colors.map((color, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "transition-all duration-300",
+                          currentSlide === index ? "block" : "hidden"
+                        )}
+                      >
+                        <Card className="overflow-hidden border-0 shadow-sm w-full max-w-md mx-auto">
+                          <div className="aspect-[3/4] relative">
+                            {color.image_url && (
+                              <img
+                                src={color.image_url}
+                                alt={
+                                  items.find(
+                                    (item) => item.item.id === openModal
+                                  )?.item.description
+                                }
+                                className="object-cover w-full h-full"
+                              />
+                            )}
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-medium text-slate-900">
+                              {
+                                items.find((item) => item.item.id === openModal)
+                                  ?.item.description
+                              }
+                            </h3>
+                            <p className="text-slate-600">
+                              $
+                              {
+                                items.find((item) => item.item.id === openModal)
+                                  ?.item.price
+                              }
+                            </p>
+                            <div className="mt-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center">
+                                  <span className="text-xs text-gray-500 mr-2">
+                                    Real Color
+                                  </span>
+                                  <div
+                                    className="w-4 h-4 rounded-full border border-gray-200"
+                                    style={{
+                                      backgroundColor: parseRGB(color.real_rgb),
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-xs text-gray-500 mr-2">
+                                    Season Color
+                                  </span>
+                                  <div
+                                    className="w-4 h-4 rounded-full border border-gray-200"
+                                    style={{
+                                      backgroundColor: parseRGB(color.code),
+                                    }}
+                                  />
+                                </div>
+                                <Badge variant="secondary" className="text-xs">
+                                  Distance:{" "}
+                                  {color.euclidean_distance.toFixed(2)}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Navigation and Indicators together at bottom */}
+                <div className="flex items-center justify-center gap-4 mt-4">
+                  <Button variant="ghost" size="icon" onClick={prevSlide}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  {/* Slide Indicators */}
+                  <div className="flex justify-center gap-2">
+                    {items
+                      .find((item) => item.item.id === openModal)
+                      ?.item.colors.map((_, index) => (
+                        <Button
+                          key={index}
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "w-2 h-2 rounded-full p-0",
+                            currentSlide === index
+                              ? "bg-primary"
+                              : "bg-gray-200"
+                          )}
+                          onClick={() => setCurrentSlide(index)}
+                        />
+                      ))}
+                  </div>
+
+                  <Button variant="ghost" size="icon" onClick={nextSlide}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </RootLayout>
   );
