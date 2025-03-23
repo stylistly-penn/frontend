@@ -521,57 +521,305 @@ const ProfilePage = () => {
               <div className="h-4 bg-gray-200 rounded w-48"></div>
             </div>
           ) : (
-            <div className="text-gray-600 space-y-3">
+            <div className="text-gray-600 space-y-6">
               {userSeason === "Spring" && (
                 <>
-                  <p>
-                    Go for warm, bright, and light combinations! Think coral and
-                    ivory, peach and mint, or dusty orange and camel.
+                  <p className="mb-4">
+                    Go for warm, bright, and light combinations! These colors
+                    reflect the fresh energy of spring.
                   </p>
-                  <ul className="list-disc list-inside">
-                    <li>Coral + Ivory</li>
-                    <li>Peach + Mint</li>
-                    <li>Dusty Orange + Camel</li>
-                  </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Coral + Sunflower Yellow
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Coral</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(245, 89, 72)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Sunflower</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(253, 230, 55)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Peach + Mint
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Peach</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(230, 174, 91)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Mint</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(115, 189, 168)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Dusty Orange + Blue
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Orange</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(251, 134, 48)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Blue</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(60, 137, 188)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
               {userSeason === "Summer" && (
                 <>
-                  <p>
-                    Soft, cool, and muted combinations work best. Try a sky blue
-                    and lavender, or soft navy with blush pink.
+                  <p className="mb-4">
+                    Soft, cool, and muted combinations work best. These colors
+                    capture the gentle warmth of summer.
                   </p>
-                  <ul className="list-disc list-inside">
-                    <li>Sky Blue + Lavender</li>
-                    <li>Soft Navy + Blush Pink</li>
-                    <li>Mauve + Cool Grey</li>
-                  </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Sky Blue + Lavender
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Sky Blue</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(163, 206, 222)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Lavender</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(153, 141, 179)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Soft Navy + Blush Pink
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Navy</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(55, 51, 87)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Blush</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(241, 175, 193)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Mauve + Cool Grey
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Mauve</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(124, 116, 169)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Grey</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(151, 142, 137)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
               {userSeason === "Autumn" && (
                 <>
-                  <p>
-                    Embrace rich, earthy tones! Olive and rust, burgundy and
-                    dusty pink are classic combos.
+                  <p className="mb-4">
+                    Embrace rich, earthy tones! These warm colors reflect the
+                    changing leaves of autumn.
                   </p>
-                  <ul className="list-disc list-inside">
-                    <li>Olive + Rust</li>
-                    <li>Burgundy + Dusty Pink</li>
-                    <li>Terracotta + Forest Green</li>
-                  </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Olive + Rust
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Olive</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(59, 68, 52)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Rust</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(111, 55, 48)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Burgundy + Dusty Pink
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Burgundy</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(63, 46, 50)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Pink</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(248, 90, 89)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Terracotta + Gold
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Terracotta</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(220, 101, 78)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Gold</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(249, 194, 91)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
               {userSeason === "Winter" && (
                 <>
-                  <p>
-                    High contrast and cool tones shine. Think black and white,
-                    royal blue with silver, or deep red and charcoal.
+                  <p className="mb-4">
+                    High contrast and cool tones shine. These bold colors
+                    reflect the crisp clarity of winter.
                   </p>
-                  <ul className="list-disc list-inside">
-                    <li>Black + White</li>
-                    <li>Royal Blue + Silver</li>
-                    <li>Deep Red + Charcoal</li>
-                  </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Black + White
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Black</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(18, 15, 6)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">White</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm border border-gray-200"
+                            style={{ backgroundColor: "rgb(254, 249, 237)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Royal Blue + Yellow
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Blue</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(55, 118, 179)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Yellow</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(255, 246, 107)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-200">
+                      <h3 className="text-base font-bold mb-4 text-center">
+                        Deep Red + Charcoal
+                      </h3>
+                      <div className="relative h-24 w-full flex justify-center">
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Red</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(214, 50, 49)" }}
+                          ></div>
+                        </div>
+                        <div className="flex flex-col items-center mx-4">
+                          <span className="text-xs mb-1">Charcoal</span>
+                          <div
+                            className="w-14 h-14 rounded-full shadow-sm"
+                            style={{ backgroundColor: "rgb(26, 21, 22)" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
               {/* New Section for No Season */}
